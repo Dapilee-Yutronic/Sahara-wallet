@@ -1487,6 +1487,18 @@
     <div id="status_banner" class="status-banner"></div>
 
     <div class="grid">
+      <div id="card_session_loading" class="card span-12" style="display:none;">
+        <h3>Loading your account</h3>
+        <p class="sub">Hang on — we are loading your profile and verification status.</p>
+      </div>
+      <div id="card_session_error" class="card span-12" style="display:none;">
+        <h3>Could not load your account</h3>
+        <p class="sub">Check your connection, then try again. You can also sign out and sign back in.</p>
+        <div class="row" style="margin-top:10px;">
+          <button type="button" onclick="loadProfile()">Try again</button>
+          <button type="button" class="secondary" onclick="logout()">Sign out</button>
+        </div>
+      </div>
       <div id="card_register" class="card span-12" style="display:none;">
         <h3>Create Account</h3>
         <div class="sub">New here? Create your Sahara account to get started.</div>
@@ -1937,6 +1949,8 @@
     let token = "";
     let theme = "light";
     let currentUserProfile = null;
+    /** True after /me fails for reasons other than 401/403 (e.g. offline). */
+    let sessionBootstrapFailed = false;
     let activityExpanded = false;
     let activityCache = [];
     let currentMobileTab = "home";
@@ -2465,6 +2479,7 @@
 
     function applyAuthView() {
       const hasToken = !!token;
+      const profileReady = hasToken && currentUserProfile !== null;
       const isPhone = window.matchMedia && window.matchMedia(GW_MOBILE_TAB_MQ).matches;
       const p = currentUserProfile;
       const approved = isKycApproved(p);
@@ -2492,34 +2507,45 @@
       const mobileQuickBar = document.getElementById("mobile_quick_bar");
       if (mobileQuickBar) mobileQuickBar.style.display = "none";
 
+      const sessionLoading = document.getElementById("card_session_loading");
+      if (sessionLoading) {
+        sessionLoading.style.display =
+          hasToken && !profileReady && !sessionBootstrapFailed ? "block" : "none";
+      }
+      const sessionError = document.getElementById("card_session_error");
+      if (sessionError) {
+        sessionError.style.display =
+          hasToken && !profileReady && sessionBootstrapFailed ? "block" : "none";
+      }
+
       const snap = document.getElementById("card_wallet_snapshot");
-      if (snap) snap.style.display = hasToken && approved ? "block" : "none";
+      if (snap) snap.style.display = profileReady && approved ? "block" : "none";
 
       ["card_wallet_ops", "card_quick_actions", "card_payment_methods", "card_activity"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.style.display = hasToken && approved ? "block" : "none";
+        el.style.display = profileReady && approved ? "block" : "none";
       });
 
       const profileCard = document.getElementById("card_profile_photo");
       if (profileCard) {
-        profileCard.style.display = hasToken && !hasProfilePhoto && !approved ? "block" : "none";
+        profileCard.style.display = profileReady && !hasProfilePhoto && !approved ? "block" : "none";
       }
 
       const kycCard = document.getElementById("card_kyc");
       if (kycCard) {
         if (!hasToken) kycCard.style.display = "none";
-        else kycCard.style.display = !hasSubmitted && !approved ? "block" : "none";
+        else kycCard.style.display = profileReady && !hasSubmitted && !approved ? "block" : "none";
       }
 
       const onboardingPending = document.getElementById("card_onboarding_pending");
       if (onboardingPending) {
-        onboardingPending.style.display = hasToken && hasSubmitted && !approved ? "block" : "none";
+        onboardingPending.style.display = profileReady && hasSubmitted && !approved ? "block" : "none";
       }
 
       const greetingCard = document.getElementById("card_greeting");
       if (greetingCard) {
-        greetingCard.style.display = hasToken && approved && hasProfilePhoto ? "block" : "none";
+        greetingCard.style.display = profileReady && approved && hasProfilePhoto ? "block" : "none";
       }
 
       const adminCard = document.getElementById("card_admin_monitoring");
@@ -2534,6 +2560,7 @@
     function logout() {
       stopBalanceAutoRefresh();
       currentUserProfile = null;
+      sessionBootstrapFailed = false;
       setToken("");
       showSignInCard();
       const banner = document.getElementById("status_banner");
@@ -2581,13 +2608,16 @@
         try {
           data = JSON.parse(text);
         } catch {
-          if (!res.ok) throw { detail: text.slice(0, 800) || `HTTP ${res.status}` };
-          throw { detail: "Invalid JSON from server" };
+          if (!res.ok) throw { detail: text.slice(0, 800) || `HTTP ${res.status}`, status: res.status };
+          throw { detail: "Invalid JSON from server", status: res.status };
         }
       }
       if (!res.ok) {
-        if (data && typeof data === "object" && (data.detail !== undefined || data.message !== undefined)) throw data;
-        throw { detail: `HTTP ${res.status}` };
+        const base =
+          data && typeof data === "object"
+            ? data
+            : { detail: text ? text.slice(0, 800) : `HTTP ${res.status}` };
+        throw { ...base, status: res.status };
       }
       return data;
     }
@@ -2801,6 +2831,7 @@
     }
 
     async function loadProfile() {
+      sessionBootstrapFailed = false;
       try {
         const data = await call("/me");
         currentUserProfile = data;
@@ -2816,8 +2847,19 @@
           clearWalletSnapshotDisplay();
           stopBalanceAutoRefresh();
         }
+      } catch (e) {
+        setOut(e);
+        const st = e && typeof e === "object" ? e.status : undefined;
+        if (st === 401 || st === 403) {
+          currentUserProfile = null;
+          sessionBootstrapFailed = false;
+          setToken("");
+        } else {
+          currentUserProfile = null;
+          sessionBootstrapFailed = true;
+          applyAuthView();
+        }
       }
-      catch (e) { setOut(e); }
     }
 
     async function loadTransactions() {

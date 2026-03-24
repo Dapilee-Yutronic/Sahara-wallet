@@ -1,4 +1,5 @@
-const CACHE_NAME = "sahara-pwa-v3";
+const CACHE_NAME = "sahara-pwa-v4";
+
 const APP_SHELL = [
   "/",
   "/static/index.html",
@@ -57,20 +58,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((resp) => {
-          const copy = resp.clone();
-          return caches.open(CACHE_NAME).then((cache) => {
-            try {
-              cache.put(event.request, copy);
-            } catch (_) {}
-            return resp;
-          });
-        })
-        .catch(() => caches.match("/"));
-    })
-  );
+  // Do not intercept other requests. Caching /me, /wallet/summary, etc. breaks auth
+  // and shows the wrong onboarding state or kicks users into stale sessions.
 });
