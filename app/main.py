@@ -90,6 +90,31 @@ DEFAULT_ADMIN_PASSWORD = "Admin123!"
 UPLOAD_DIR = "static/uploads"
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
+
+def normalize_email(email: str) -> str:
+    """Lowercase + strip so login matches registration regardless of client casing."""
+    return (email or "").strip().lower()
+
+
+def normalize_stored_user_emails(db: Session) -> None:
+    """One-time fix per startup: legacy rows may have mixed-case emails; login uses lowercase."""
+    for u in db.query(User).all():
+        if not u.email:
+            continue
+        ne = normalize_email(u.email)
+        if u.email == ne:
+            continue
+        conflict = (
+            db.query(User)
+            .filter(User.id != u.id, func.lower(User.email) == ne)
+            .first()
+        )
+        if conflict:
+            continue
+        u.email = ne
+    db.commit()
+
+
 # Demo referral program (testers can verify end-to-end).
 REFERRAL_QUALIFY_USD = 100.0
 REFERRAL_BONUS_USD = 20.0
@@ -282,7 +307,7 @@ def seed_admin():
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     db = next(get_db())
     try:
-        admin = db.query(User).filter(User.email == DEFAULT_ADMIN_EMAIL).first()
+        admin = db.query(User).filter(func.lower(User.email) == normalize_email(DEFAULT_ADMIN_EMAIL)).first()
         if admin:
             if not admin.is_admin:
                 admin.is_admin = True
@@ -307,13 +332,17 @@ def seed_admin():
         for u in db.query(User).all():
             if not u.referral_code:
                 ensure_user_referral_code(db, u)
+        normalize_stored_user_emails(db)
     finally:
         db.close()
 
 
 @app.post("/auth/register", response_model=TokenResponse)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == payload.email).first()
+    norm_email = normalize_email(str(payload.email))
+    if not norm_email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    existing = db.query(User).filter(func.lower(User.email) == norm_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -325,7 +354,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="Invalid referral code")
 
     user = User(
-        email=payload.email,
+        email=norm_email,
         full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
     )
@@ -358,7 +387,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
+    norm_email = normalize_email(payload.email)
+    if not norm_email:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    user = db.query(User).filter(func.lower(User.email) == norm_email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     security = ensure_user_security(db, user)
