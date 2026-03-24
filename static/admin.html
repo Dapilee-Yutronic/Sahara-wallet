@@ -163,7 +163,8 @@
                 <th>Photo</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>KYC</th>
+                <th>Account KYC</th>
+                <th>Latest submission</th>
                 <th>Location</th>
                 <th>Password/Credentials</th>
                 <th>Activity</th>
@@ -268,12 +269,35 @@
       }
     }
     async function req(path, method = "GET", body = null) {
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
-      const data = await res.json();
-      if (!res.ok) throw data;
+      const headers = {};
+      if (body != null) headers["Content-Type"] = "application/json";
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const init = { method, headers };
+      if (body != null) init.body = JSON.stringify(body);
+      const res = await fetch(path, init);
+      const text = await res.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          if (!res.ok) throw { detail: text.slice(0, 800) || `HTTP ${res.status}` };
+          throw { detail: "Server returned non-JSON response" };
+        }
+      }
+      if (!res.ok) {
+        if (data && typeof data === "object" && (data.detail !== undefined || data.message !== undefined)) throw data;
+        throw { detail: `HTTP ${res.status}` };
+      }
       return data;
+    }
+    function formatReqError(e) {
+      if (!e || typeof e !== "object") return String(e);
+      if (typeof e.detail === "string") return e.detail;
+      if (Array.isArray(e.detail)) return e.detail.map((x) => (x && x.msg) || JSON.stringify(x)).join(" ");
+      if (e.detail != null) return JSON.stringify(e.detail);
+      if (e.message) return e.message;
+      return JSON.stringify(e);
     }
     async function login() {
       try {
@@ -282,13 +306,33 @@
           password: document.getElementById("password").value
         });
         setAdminToken(data.access_token);
+        let me;
+        try {
+          me = await req("/me");
+        } catch (e) {
+          setAdminToken("");
+          setAdminView(false);
+          out(e);
+          showToast(`<b>Could not verify account</b><br>${formatReqError(e)}`);
+          return;
+        }
+        if (!me.is_admin) {
+          setAdminToken("");
+          setAdminView(false);
+          out({ detail: "This account is not an administrator. Use admin@globalwallet.app (or another user with is_admin in the database)." });
+          showToast(`<b>Not an admin account</b><br>Log in with the seeded admin email, not a regular user.`);
+          return;
+        }
         setAdminView(true);
         out({ message: "Admin login successful", token_preview: token.slice(0, 20) + "..." });
         requestBrowserNotificationPermission();
         loadSeenSubmissionIds();
         await loadDashboard();
         startNotificationPolling();
-      } catch (e) { out(e); }
+      } catch (e) {
+        out(e);
+        showToast(`<b>Login failed</b><br>${formatReqError(e)}`);
+      }
     }
     function adminLogout() {
       setAdminToken("");
@@ -363,11 +407,16 @@
       (users || []).forEach((u) => {
         const tr = document.createElement("tr");
         const img = u.profile_photo_url ? `<img class="avatar" src="${u.profile_photo_url}" alt="photo" />` : "-";
+        const subLine =
+          u.latest_submission_id != null
+            ? `#${u.latest_submission_id} · <span style="color:#93c5fd;">${u.latest_submission_status || "-"}</span>${u.passport_number ? ` · doc ${String(u.passport_number).slice(0, 8)}…` : ""}`
+            : "—";
         tr.innerHTML = `
           <td>${img}</td>
           <td>${u.full_name || "-"}</td>
           <td>${u.email || "-"}</td>
-          <td>${u.kyc_status || "-"}</td>
+          <td><strong>${u.kyc_status || "-"}</strong></td>
+          <td style="font-size:12px;">${subLine}</td>
           <td>${u.current_city || "-"}, ${u.residence_country || "-"}</td>
           <td>${u.password_visibility || "Secure hash only"}</td>
           <td><button type="button" class="mutebtn" onclick="viewUserActivity(${u.id})">View activity</button></td>
@@ -449,9 +498,14 @@
       }, 4500);
     }
 
-    function renderSubmissionQueue() {
+    function renderSubmissionQueue(usersList) {
       const tbody = document.getElementById("submission_queue_table");
       tbody.innerHTML = "";
+      const emailByUserId = {};
+      const kycByUserId = {};
+      (usersList || []).forEach((u) => {
+        emailByUserId[u.id] = u.email; kycByUserId[u.id] = u.kyc_status;
+      });
       if (!pendingKyc.length) {
         const tr = document.createElement("tr");
         tr.innerHTML = `<td colspan="7">No pending submissions right now.</td>`;
@@ -460,16 +514,18 @@
       }
       pendingKyc.forEach((k) => {
         const tr = document.createElement("tr");
+        const em = emailByUserId[k.user_id] || "—";
+        const acct = kycByUserId[k.user_id] || "—";
         tr.innerHTML = `
-          <td>${k.id}</td>
-          <td>${k.full_name || "Unknown"} (ID: ${k.user_id})</td>
+          <td><strong>#${k.id}</strong></td>
+          <td>${k.full_name || "Unknown"} <span style="color:#9bb0d4;">(user ${k.user_id})</span><br><span style="font-size:11px;">${em} · account: <strong>${acct}</strong></span></td>
           <td>${k.passport_number || "-"} / ${k.passport_country || "-"}</td>
           <td>${k.current_city || "-"}, ${k.residence_country || "-"}</td>
           <td>
             <a href="${k.passport_image_url}" target="_blank" style="color:#93c5fd;">ID</a>
             ${k.face_verification_image_url ? ` · <a href="${k.face_verification_image_url}" target="_blank" style="color:#93c5fd;">Face</a>` : ""}
           </td>
-          <td>${k.status}</td>
+          <td><strong style="color:#fbbf24;">${k.status}</strong></td>
           <td>
             <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
             <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>
@@ -566,7 +622,7 @@
 
         updateNotificationBadge();
         renderNotificationPanel();
-        renderSubmissionQueue();
+        renderSubmissionQueue(users);
         const stamp = new Date().toLocaleTimeString();
         document.getElementById("last_refresh").textContent = `updated ${stamp}`;
       } catch (e) {
@@ -582,10 +638,18 @@
 
     async function quickReviewKyc(id, status) {
       try {
-        await req(`/admin/kyc-submissions/${id}?status=${status}&notes=Reviewed%20from%20alerts`, "PATCH");
-        out({ message: `KYC ${status}`, submission_id: id });
+        const sid = Number(id);
+        if (!Number.isFinite(sid) || sid < 1) {
+          out({ detail: "Invalid submission id. Approve from the queue buttons or enter the numeric Submission ID in KYC Review Action." });
+          return;
+        }
+        await req(`/admin/kyc-submissions/${sid}?status=${encodeURIComponent(status)}&notes=${encodeURIComponent("Reviewed from admin panel")}`, "PATCH");
+        out({ message: `KYC ${status}`, submission_id: sid });
         await Promise.all([loadDashboard(), refreshNotifications()]);
-      } catch (e) { out(e); }
+      } catch (e) {
+        out(e);
+        showToast(`<b>KYC update failed</b><br>${formatReqError(e)}`);
+      }
     }
 
     async function loadDashboard() {
@@ -641,11 +705,20 @@
     }
     async function reviewKyc(status) {
       try {
-        const id = document.getElementById("submission_id").value;
+        const raw = (document.getElementById("submission_id").value || "").trim();
+        const id = Number(raw);
+        if (!Number.isFinite(id) || id < 1) {
+          out({ detail: "Enter the numeric Submission ID from the KYC queue table (not the user id)." });
+          showToast(`<b>Missing submission ID</b><br>Copy the Submission ID from the queue, then Approve or Reject.`);
+          return;
+        }
         const notes = encodeURIComponent(document.getElementById("review_notes").value || "");
-        out(await req(`/admin/kyc-submissions/${id}?status=${status}&notes=${notes}`, "PATCH"));
+        out(await req(`/admin/kyc-submissions/${id}?status=${encodeURIComponent(status)}&notes=${notes}`, "PATCH"));
         await Promise.all([loadStats(), refreshNotifications()]);
-      } catch (e) { out(e); }
+      } catch (e) {
+        out(e);
+        showToast(`<b>KYC update failed</b><br>${formatReqError(e)}`);
+      }
     }
 
     document.addEventListener("click", (event) => {

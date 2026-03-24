@@ -1030,7 +1030,7 @@
       .row, .row-3 { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       .wrap {
         padding: 12px 12px 96px;
       }
@@ -1236,10 +1236,6 @@
         width: 100% !important;
       }
 
-      #card_quick_actions {
-        display: none !important;
-      }
-
       .mobile-quick-bar {
         position: fixed;
         left: 14px;
@@ -1247,7 +1243,7 @@
         bottom: max(10px, env(safe-area-inset-bottom, 0px));
         z-index: 1300;
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 4px;
         padding: 8px 6px;
         background: color-mix(in srgb, var(--card) 40%, transparent);
@@ -1545,6 +1541,7 @@
 
       <div id="card_wallet_ops" class="card span-8">
         <h3>Wallet Operations</h3>
+        <div class="sub" style="margin-bottom:12px;">On your phone, open the <strong>Payments</strong> tab — wallet moves, PayPal demos, FX, withdrawals, and Sahara transfers live there with saved payment methods and quick tools.</div>
 
         <div class="sub">1) Add USD Funds</div>
         <div class="row-3">
@@ -1612,7 +1609,6 @@
         <h3>Quick Actions</h3>
         <button class="secondary" onclick="loadProfile()">Load Profile</button>
         <button class="secondary" onclick="loadTransactions()">Transactions</button>
-        <button class="secondary" onclick="loadSummary()">Wallet Summary</button>
         <button class="secondary" onclick="loadMyKyc()">My KYC</button>
       </div>
 
@@ -1646,6 +1642,12 @@
         <button onclick="submitKyc()">Submit for verification</button>
       </div>
 
+      <div id="card_onboarding_pending" class="card span-12" style="display:none;">
+        <div class="eyebrow">Status</div>
+        <h3>Verification submitted</h3>
+        <p class="sub">We have your documents and are reviewing them. Balances, payments, and transfers unlock after approval. You will see only this screen until then.</p>
+      </div>
+
       <div id="card_greeting" class="card span-12" style="display:none;">
         <div class="hero-greeting">
           <div class="greet-left">
@@ -1654,10 +1656,9 @@
             </span>
             <div>
               <h2 id="greeting_text">Hello</h2>
-              <p id="greeting_subtext">KYC submitted. We are processing your account.</p>
+              <p id="greeting_subtext">Welcome — your wallet is ready when setup is complete.</p>
             </div>
           </div>
-          <button class="secondary" type="button" onclick="loadSummary()">Refresh Balance</button>
         </div>
       </div>
 
@@ -1756,8 +1757,8 @@
 
       <div id="card_activity" class="card span-6">
         <div class="eyebrow">Timeline</div>
-        <h3>Recent Activity</h3>
-        <div class="sub">Professional activity updates in plain English.</div>
+        <h3>Recent transactions</h3>
+        <div class="sub">Activity and account updates in plain English.</div>
         <div id="activity_list" class="activity-list" style="margin-top:10px;"></div>
         <div class="activity-actions-row">
           <button id="activity_more_btn" class="secondary" type="button" onclick="toggleActivityView()" style="display:none;">Show more</button>
@@ -1775,18 +1776,6 @@
           <path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span>Home</span>
-      </span>
-    </button>
-    <button id="mobile_tab_activity" class="secondary" type="button" onclick="setMobileTab('activity')">
-      <span class="tab-inner">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M7 14l2.2-2.2 2.2 2.2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="7" cy="14" r="1" fill="currentColor"/>
-          <circle cx="11.4" cy="14" r="1" fill="currentColor"/>
-          <circle cx="15.4" cy="10" r="1" fill="currentColor"/>
-        </svg>
-        <span>Activities</span>
       </span>
     </button>
     <button id="mobile_tab_payments" class="secondary" type="button" onclick="setMobileTab('payments')">
@@ -1953,6 +1942,38 @@
     let currentMobileTab = "home";
     let txConfirmResolver = null;
     let deferredInstallPrompt = null;
+    let balanceRefreshTimer = null;
+
+    const GW_MOBILE_TAB_MQ = "(max-width: 768px)";
+
+    function isMobileTabLayout() {
+      return window.matchMedia && window.matchMedia(GW_MOBILE_TAB_MQ).matches;
+    }
+
+    function canShowMobileBottomNav() {
+      return !!(token && currentUserProfile && isKycApproved(currentUserProfile));
+    }
+
+    function stopBalanceAutoRefresh() {
+      if (balanceRefreshTimer) {
+        clearInterval(balanceRefreshTimer);
+        balanceRefreshTimer = null;
+      }
+    }
+
+    function startBalanceAutoRefresh() {
+      stopBalanceAutoRefresh();
+      if (!token || !currentUserProfile) return;
+      const p = currentUserProfile;
+      if (!isKycApproved(p)) return;
+      balanceRefreshTimer = setInterval(() => {
+        if (!token || !currentUserProfile) {
+          stopBalanceAutoRefresh();
+          return;
+        }
+        loadSummary().catch(() => {});
+      }, 1000);
+    }
 
     function applyTheme(nextTheme) {
       theme = nextTheme;
@@ -1980,6 +2001,11 @@
 
     window.addEventListener("resize", () => {
       applyAuthView();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden || !token || !currentUserProfile) return;
+      if (isKycApproved(currentUserProfile)) loadSummary().catch(() => {});
     });
 
     function setOut(data) {
@@ -2085,6 +2111,9 @@
 
     function setToken(nextToken) {
       token = nextToken || "";
+      if (!token) {
+        stopBalanceAutoRefresh();
+      }
       if (token) {
         localStorage.setItem("gw_token", token);
       } else {
@@ -2104,9 +2133,6 @@
       setToken(savedToken);
       try {
         await loadProfile();
-        await loadSummary();
-        await loadPaymentMethods();
-        await loadActivity();
       } catch (e) {
         // If token is stale/invalid, force clean login state.
         setToken("");
@@ -2140,6 +2166,13 @@
       document.getElementById("ghs_usd_view").textContent = fmtUsd.format(ghsUsd);
       document.getElementById("total_usd_view").textContent = fmtUsd.format(totalUsd);
       document.getElementById("rate_view").textContent = `1 USD = GH₵ ${fmtRate.format(rate)}`;
+    }
+
+    function clearWalletSnapshotDisplay() {
+      ["usd_balance_view", "ghs_balance_view", "ghs_usd_view", "total_usd_view", "rate_view"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "—";
+      });
     }
 
     function openAvatarModal() {
@@ -2314,13 +2347,18 @@
       return "Good evening";
     }
 
-    function isPostKycUser(profile) {
+    function hasSubmittedKyc(profile) {
       return !!profile && ["pending_review", "approved", "verified"].includes(profile.kyc_status);
     }
 
+    function isKycApproved(profile) {
+      return !!profile && (profile.kyc_status === "approved" || profile.kyc_status === "verified");
+    }
+
     function setMobileTab(tab) {
-      currentMobileTab = tab || "home";
-      if (currentMobileTab === "activity") {
+      currentMobileTab = tab === "payments" ? "payments" : "home";
+      if (currentMobileTab === "home") {
+        loadSummary().catch(() => {});
         loadActivity();
       } else if (currentMobileTab === "payments") {
         loadPaymentMethods();
@@ -2329,21 +2367,18 @@
     }
 
     function applyMobileTabView() {
-      const isPhone = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
-      const hasToken = !!token;
-      const nav = document.getElementById("mobile_quick_bar");
-      const isPostKyc = isPostKycUser(currentUserProfile);
+      const isNarrow = isMobileTabLayout();
+      const bar = document.getElementById("mobile_quick_bar");
 
-      if (!isPhone || !hasToken || !isPostKyc) {
-        if (nav) nav.style.display = "none";
+      if (!isNarrow || !canShowMobileBottomNav()) {
+        if (bar) bar.style.display = "none";
         return;
       }
 
-      if (nav) nav.style.display = "grid";
+      if (bar) bar.style.display = "grid";
 
       const tabs = {
         home: document.getElementById("mobile_tab_home"),
-        activity: document.getElementById("mobile_tab_activity"),
         payments: document.getElementById("mobile_tab_payments"),
       };
 
@@ -2353,26 +2388,16 @@
         btn.classList.toggle("tab-active", currentMobileTab === key);
       });
 
-      const homeCards = [
-        "card_greeting",
-        "card_wallet_snapshot",
-        "card_wallet_ops",
-      ];
-      const activityCards = ["card_activity"];
-      const paymentCards = ["card_payment_methods"];
+      const homeCards = ["card_greeting", "card_wallet_snapshot", "card_activity"];
+      const paymentCards = ["card_payment_methods", "card_wallet_ops", "card_quick_actions"];
 
-      const allMobileManagedCards = [...homeCards, ...activityCards, ...paymentCards];
+      const allMobileManagedCards = [...homeCards, ...paymentCards];
       allMobileManagedCards.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
       });
 
-      if (currentMobileTab === "activity") {
-        activityCards.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = "block";
-        });
-      } else if (currentMobileTab === "payments") {
+      if (currentMobileTab === "payments") {
         paymentCards.forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.style.display = "block";
@@ -2386,37 +2411,23 @@
     }
 
     function applyPostKycMinimalView(profile) {
-      const isPostKyc = isPostKycUser(profile);
-      const hasCompletedSetup = !!profile && !!profile.profile_photo_url && isPostKyc;
-      const showIds = ["card_greeting", "card_wallet_ops", "card_quick_actions", "card_wallet_snapshot", "card_payment_methods", "card_activity"];
-      const hideIds = [
-        "card_kyc"
-      ];
-      showIds.forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.display = "block";
-      });
-      hideIds.forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.display = isPostKyc ? "none" : "block";
-      });
+      const approved = isKycApproved(profile);
+      const hasSubmitted = hasSubmittedKyc(profile);
+      const hasPhoto = !!(profile && profile.profile_photo_url);
 
       const greetingEl = document.getElementById("greeting_text");
-      if (greetingEl && hasCompletedSetup) {
+      if (greetingEl && approved && hasPhoto) {
         greetingEl.textContent = `${getTimeGreeting()}, ${firstNameFromFullName(profile.full_name)}`;
       }
       const greetingSub = document.getElementById("greeting_subtext");
-      if (greetingSub && hasCompletedSetup) {
-        greetingSub.textContent = profile.kyc_status === "approved"
-          ? "Your account is verified. You can use all wallet actions."
-          : "Your KYC is pending review. You can still monitor and use your wallet.";
+      if (greetingSub && approved && hasPhoto) {
+        greetingSub.textContent =
+          "Home: balances and recent activity (auto-updated). Payments: methods & wallet operations.";
       }
       const avatar = document.getElementById("greeting_avatar");
       const avatarWrap = document.getElementById("greeting_avatar_wrap");
       if (avatar && avatarWrap) {
-        if (profile && profile.profile_photo_url) {
+        if (approved && profile && profile.profile_photo_url) {
           avatar.src = profile.profile_photo_url;
           avatar.removeAttribute("aria-hidden");
           avatarWrap.style.display = "inline-flex";
@@ -2424,53 +2435,41 @@
           avatarWrap.style.display = "none";
         }
       }
-      const greetingCard = document.getElementById("card_greeting");
-      if (greetingCard) {
-        greetingCard.style.display = hasCompletedSetup ? "block" : "none";
-      }
 
-      // Admin card visibility is controlled only by applyAuthView().
-      applyAuthView();
-
-      // Once KYC is submitted/approved, do not keep asking for profile upload.
-      const profileCard = document.getElementById("card_profile_photo");
-      if (profileCard && hasCompletedSetup) {
-        profileCard.style.display = "none";
-      }
-
-      // For post-KYC users: Greeting at top, then balances, then transaction controls.
       const grid = document.querySelector(".grid");
+      const greetingCard = document.getElementById("card_greeting");
       const profilePhoto = document.getElementById("card_profile_photo");
       const kycCard = document.getElementById("card_kyc");
+      const onboardingPending = document.getElementById("card_onboarding_pending");
       const walletSnapshot = document.getElementById("card_wallet_snapshot");
       const walletOps = document.getElementById("card_wallet_ops");
       const quickActions = document.getElementById("card_quick_actions");
       const paymentCard = document.getElementById("card_payment_methods");
       const activityCard = document.getElementById("card_activity");
-      if (grid && hasCompletedSetup && greetingCard && walletSnapshot && walletOps && quickActions && paymentCard && activityCard) {
-        grid.appendChild(greetingCard);
-        grid.appendChild(walletSnapshot);
-        grid.appendChild(walletOps);
-        grid.appendChild(quickActions);
-        grid.appendChild(paymentCard);
-        grid.appendChild(activityCard);
-      } else if (grid && !hasCompletedSetup && profilePhoto && walletOps && quickActions && kycCard && walletSnapshot) {
-        // Restore normal onboarding layout for users who are not yet in post-KYC state.
-        grid.appendChild(profilePhoto);
-        grid.appendChild(walletOps);
-        grid.appendChild(quickActions);
-        grid.appendChild(kycCard);
-        grid.appendChild(walletSnapshot);
-        if (paymentCard) grid.appendChild(paymentCard);
-        if (activityCard) grid.appendChild(activityCard);
+      if (grid && greetingCard && profilePhoto && kycCard && walletSnapshot && walletOps && quickActions && paymentCard && activityCard && onboardingPending) {
+        if (approved) {
+          grid.appendChild(greetingCard);
+          grid.appendChild(walletSnapshot);
+          grid.appendChild(activityCard);
+          grid.appendChild(paymentCard);
+          grid.appendChild(walletOps);
+          grid.appendChild(quickActions);
+        } else if (hasSubmitted) {
+          grid.appendChild(onboardingPending);
+        } else {
+          if (!hasPhoto) grid.appendChild(profilePhoto);
+          grid.appendChild(kycCard);
+        }
       }
     }
 
     function applyAuthView() {
       const hasToken = !!token;
-      const isPhone = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
-      const isPostKyc = isPostKycUser(currentUserProfile);
-      const hasProfilePhoto = !!(currentUserProfile && currentUserProfile.profile_photo_url);
+      const isPhone = window.matchMedia && window.matchMedia(GW_MOBILE_TAB_MQ).matches;
+      const p = currentUserProfile;
+      const approved = isKycApproved(p);
+      const hasSubmitted = hasSubmittedKyc(p);
+      const hasProfilePhoto = !!(p && p.profile_photo_url);
       const reg = document.getElementById("card_register");
       const login = document.getElementById("card_login");
       const authHero = document.getElementById("auth_hero");
@@ -2493,24 +2492,34 @@
       const mobileQuickBar = document.getElementById("mobile_quick_bar");
       if (mobileQuickBar) mobileQuickBar.style.display = "none";
 
-      const gatedCards = [
-        "card_profile_photo",
-        "card_wallet_ops",
-        "card_quick_actions",
-        "card_wallet_snapshot",
-        "card_greeting",
-        "card_payment_methods",
-        "card_activity",
-      ];
-      gatedCards.forEach((id) => {
+      const snap = document.getElementById("card_wallet_snapshot");
+      if (snap) snap.style.display = hasToken && approved ? "block" : "none";
+
+      ["card_wallet_ops", "card_quick_actions", "card_payment_methods", "card_activity"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.style.display = hasToken ? "block" : "none";
+        el.style.display = hasToken && approved ? "block" : "none";
       });
 
       const profileCard = document.getElementById("card_profile_photo");
-      if (profileCard && hasToken && isPostKyc && hasProfilePhoto) {
-        profileCard.style.display = "none";
+      if (profileCard) {
+        profileCard.style.display = hasToken && !hasProfilePhoto && !approved ? "block" : "none";
+      }
+
+      const kycCard = document.getElementById("card_kyc");
+      if (kycCard) {
+        if (!hasToken) kycCard.style.display = "none";
+        else kycCard.style.display = !hasSubmitted && !approved ? "block" : "none";
+      }
+
+      const onboardingPending = document.getElementById("card_onboarding_pending");
+      if (onboardingPending) {
+        onboardingPending.style.display = hasToken && hasSubmitted && !approved ? "block" : "none";
+      }
+
+      const greetingCard = document.getElementById("card_greeting");
+      if (greetingCard) {
+        greetingCard.style.display = hasToken && approved && hasProfilePhoto ? "block" : "none";
       }
 
       const adminCard = document.getElementById("card_admin_monitoring");
@@ -2518,19 +2527,14 @@
         adminCard.style.display = hasToken && isAdminUser ? "block" : "none";
       }
 
-      // KYC form should never show before login.
-      const kycCard = document.getElementById("card_kyc");
-      if (kycCard && !hasToken) {
-        kycCard.style.display = "none";
-      }
-
       applyMobileTabView();
       updateInstallButtonVisibility();
     }
 
     function logout() {
-      setToken("");
+      stopBalanceAutoRefresh();
       currentUserProfile = null;
+      setToken("");
       showSignInCard();
       const banner = document.getElementById("status_banner");
       if (banner) banner.style.display = "none";
@@ -2565,11 +2569,26 @@
     }
 
     async function call(path, method = "GET", body = null) {
-      const headers = { "Content-Type": "application/json" };
+      const headers = {};
+      if (body != null) headers["Content-Type"] = "application/json";
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
-      const data = await res.json();
-      if (!res.ok) throw data;
+      const init = { method, headers };
+      if (body != null) init.body = JSON.stringify(body);
+      const res = await fetch(path, init);
+      const text = await res.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          if (!res.ok) throw { detail: text.slice(0, 800) || `HTTP ${res.status}` };
+          throw { detail: "Invalid JSON from server" };
+        }
+      }
+      if (!res.ok) {
+        if (data && typeof data === "object" && (data.detail !== undefined || data.message !== undefined)) throw data;
+        throw { detail: `HTTP ${res.status}` };
+      }
       return data;
     }
 
@@ -2589,9 +2608,6 @@
         } catch (_) {}
         setToken(data.access_token);
         await loadProfile();
-        await loadSummary();
-        await loadPaymentMethods();
-        await loadActivity();
       } catch (e) { setOut(e); }
     }
 
@@ -2604,9 +2620,6 @@
         });
         setToken(data.access_token);
         await loadProfile();
-        await loadSummary();
-        await loadPaymentMethods();
-        await loadActivity();
       } catch (e) { setOut(e); }
     }
 
@@ -2793,7 +2806,16 @@
         currentUserProfile = data;
         applyAuthView();
         applyPostKycMinimalView(data);
-        await loadPaypalInvoices();
+        if (isKycApproved(currentUserProfile)) {
+          await loadSummary();
+          await loadPaymentMethods();
+          await loadActivity();
+          await loadPaypalInvoices();
+          startBalanceAutoRefresh();
+        } else {
+          clearWalletSnapshotDisplay();
+          stopBalanceAutoRefresh();
+        }
       }
       catch (e) { setOut(e); }
     }
@@ -2828,7 +2850,10 @@
           face_verification_image_url: faceUrl,
         });
         await loadProfile();
-        await loadActivity();
+        setOut({
+          message:
+            "Verification submitted. Our team will review your documents. You will have full wallet access after approval.",
+        });
       } catch (e) { setOut(e); }
     }
 
