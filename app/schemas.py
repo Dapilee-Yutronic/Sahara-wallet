@@ -60,6 +60,11 @@ class ConvertRequest(BaseModel):
     quote_id: int
 
 
+class FXConvertDirectRequest(BaseModel):
+    amount_usd: float
+    to_currency: str = "GHS"  # GHS or NGN
+
+
 class WithdrawRequest(BaseModel):
     currency: str
     amount: float

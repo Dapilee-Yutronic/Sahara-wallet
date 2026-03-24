@@ -504,8 +504,36 @@
 
     .wallet-metrics {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
       gap: 10px;
+    }
+
+    .wd-error-text {
+      color: #b91c1c;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 8px;
+      display: none;
+    }
+
+    [data-theme="dark"] .wd-error-text {
+      color: #fca5a5;
+    }
+
+    .fx-preview-box {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, var(--accent) 8%);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .fx-preview-box .muted {
+      color: var(--muted);
+      font-size: 12px;
     }
 
     .hero-greeting {
@@ -1609,30 +1637,39 @@
         <div id="paypal_invoice_last" class="sub" style="margin-top:6px;"></div>
         <div id="paypal_invoice_list" class="activity-list" style="margin-top:10px;"></div>
 
-        <div class="sub">2) Quote and Convert</div>
+        <div class="sub">2) Convert USD → GHS or Naira</div>
+        <div class="sub" style="margin-top:4px;color:var(--muted);">Enter a USD amount — we show the estimated credit to your cedi or naira wallet. Then convert in one step.</div>
         <div class="row-3">
-          <input id="quote_amount" type="number" placeholder="USD amount for quote">
-          <button onclick="quote()">Get FX Quote</button>
-          <input id="quote_id" type="number" placeholder="Quote ID">
+          <select id="fx_target_currency" onchange="scheduleFxPreview()">
+            <option value="GHS">Convert to Ghana cedis (GHS)</option>
+            <option value="NGN">Convert to Nigerian naira (NGN)</option>
+          </select>
+          <input id="quote_amount" type="number" min="0" step="0.01" placeholder="USD amount (e.g. 1)" oninput="scheduleFxPreview()">
+          <button type="button" onclick="convertDirect()">Convert &amp; credit wallet</button>
         </div>
-        <button onclick="convert()">Convert Quote</button>
+        <div id="fx_preview_wrap" class="fx-preview-box" style="display:none;">
+          <div id="fx_preview_main"></div>
+          <div class="muted" id="fx_preview_sub"></div>
+        </div>
 
         <div class="sub" style="margin-top: 14px;">3) Withdraw</div>
         <div class="row-3">
-          <select id="wd_currency">
-            <option>GHS</option>
-            <option>USD</option>
+          <select id="wd_currency" onchange="clearWithdrawError()">
+            <option value="GHS">GHS</option>
+            <option value="USD">USD</option>
+            <option value="NGN">NGN</option>
           </select>
-          <input id="wd_amount" type="number" placeholder="Amount">
+          <input id="wd_amount" type="number" min="0" step="0.01" placeholder="Amount" oninput="clearWithdrawError()">
           <select id="wd_type">
             <option value="momo">Mobile Money</option>
             <option value="bank">Bank Account</option>
           </select>
         </div>
         <div class="row">
-          <input id="wd_account" placeholder="Destination account">
-          <button onclick="withdraw()">Withdraw Funds</button>
+          <input id="wd_account" placeholder="Destination account" oninput="clearWithdrawError()">
+          <button type="button" onclick="withdraw()">Withdraw Funds</button>
         </div>
+        <div id="wd_error" class="wd-error-text" role="alert"></div>
 
         <div class="sub" style="margin-top: 14px;">4) Sahara-to-Sahara Transfer</div>
         <div class="row-3">
@@ -1718,16 +1755,28 @@
             <div class="value" id="ghs_balance_view">-</div>
           </div>
           <div class="metric">
+            <div class="label">NGN Balance</div>
+            <div class="value" id="ngn_balance_view">-</div>
+          </div>
+          <div class="metric">
             <div class="label">GHS as USD</div>
             <div class="value" id="ghs_usd_view">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">NGN as USD</div>
+            <div class="value" id="ngn_usd_view">-</div>
           </div>
           <div class="metric">
             <div class="label">Total USD Equivalent</div>
             <div class="value success" id="total_usd_view">-</div>
           </div>
           <div class="metric">
-            <div class="label">Display Rate USD->GHS</div>
+            <div class="label">USD → GHS</div>
             <div class="value warning" id="rate_view">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">USD → NGN</div>
+            <div class="value warning" id="rate_ngn_view">-</div>
           </div>
         </div>
       </div>
@@ -1970,6 +2019,16 @@
     </div>
   </div>
 
+  <div id="alert_modal_backdrop" class="tx-confirm-backdrop" onclick="closeAlertModal(event)" style="display:none;">
+    <div class="tx-confirm-modal" onclick="event.stopPropagation()">
+      <h4 class="tx-confirm-title" id="alert_modal_title">Notice</h4>
+      <p id="alert_modal_text" class="tx-confirm-text"></p>
+      <div class="tx-confirm-actions">
+        <button type="button" onclick="closeAlertModal()">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div id="install_help_backdrop" class="install-help-backdrop" onclick="closeInstallHelp(event)">
     <div class="install-help-modal">
       <h4>Install Sahara App</h4>
@@ -2002,6 +2061,8 @@
     let sessionBootstrapFailed = false;
     let activityExpanded = false;
     let activityCache = [];
+    let lastWalletSummary = null;
+    let fxPreviewTimer = null;
     let currentMobileTab = "home";
     let txConfirmResolver = null;
     let deferredInstallPrompt = null;
@@ -2207,11 +2268,15 @@
 
     function renderSummary(summary) {
       if (!summary) return;
+      lastWalletSummary = summary;
       const usd = Number(summary.usd_balance ?? 0);
       const ghs = Number(summary.ghs_balance ?? 0);
+      const ngn = Number(summary.ngn_balance ?? 0);
       const ghsUsd = Number(summary.ghs_usd_equivalent ?? 0);
+      const ngnUsd = Number(summary.ngn_usd_equivalent ?? 0);
       const totalUsd = Number(summary.total_usd_equivalent ?? 0);
       const rate = Number(summary.display_rate_usd_to_ghs ?? 0);
+      const rateNgn = Number(summary.display_rate_usd_to_ngn ?? 0);
 
       const fmtUsd = new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -2222,23 +2287,49 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
+      const fmtNgn = new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
       const fmtRate = new Intl.NumberFormat("en-GH", {
         minimumFractionDigits: 4,
         maximumFractionDigits: 4,
       });
+      const fmtRateNgn = new Intl.NumberFormat("en-NG", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
 
       document.getElementById("usd_balance_view").textContent = fmtUsd.format(usd);
       document.getElementById("ghs_balance_view").textContent = `GH₵ ${fmtGhs.format(ghs)}`;
+      const ngnEl = document.getElementById("ngn_balance_view");
+      if (ngnEl) ngnEl.textContent = fmtNgn.format(ngn);
       document.getElementById("ghs_usd_view").textContent = fmtUsd.format(ghsUsd);
+      const ngnUsdEl = document.getElementById("ngn_usd_view");
+      if (ngnUsdEl) ngnUsdEl.textContent = fmtUsd.format(ngnUsd);
       document.getElementById("total_usd_view").textContent = fmtUsd.format(totalUsd);
       document.getElementById("rate_view").textContent = `1 USD = GH₵ ${fmtRate.format(rate)}`;
+      const rNgn = document.getElementById("rate_ngn_view");
+      if (rNgn) rNgn.textContent = rateNgn ? `1 USD = ${fmtRateNgn.format(rateNgn)}` : "—";
     }
 
     function clearWalletSnapshotDisplay() {
-      ["usd_balance_view", "ghs_balance_view", "ghs_usd_view", "total_usd_view", "rate_view"].forEach((id) => {
+      [
+        "usd_balance_view",
+        "ghs_balance_view",
+        "ngn_balance_view",
+        "ghs_usd_view",
+        "ngn_usd_view",
+        "total_usd_view",
+        "rate_view",
+        "rate_ngn_view",
+      ].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.textContent = "—";
       });
+      lastWalletSummary = null;
     }
 
     function openAvatarModal() {
@@ -2840,36 +2931,71 @@
       }
     }
 
-    async function quote() {
-      try {
-        const data = await call("/fx/quote", "POST", {
-          amount_usd: Number(document.getElementById("quote_amount").value)
-        });
-        document.getElementById("quote_id").value = data.quote_id;
-      } catch (e) { setOut(e); }
-    }
-
-    async function convert() {
-      try {
-        const data = await call("/fx/convert", "POST", {
-          quote_id: Number(document.getElementById("quote_id").value)
-        });
-        if (data.wallet_summary) renderSummary(data.wallet_summary);
-        await loadActivity();
-      } catch (e) { setOut(e); }
-    }
-
     async function withdraw() {
+      clearWithdrawError();
+      const currency = (document.getElementById("wd_currency")?.value || "GHS").toUpperCase();
+      const amount = Number(document.getElementById("wd_amount")?.value);
+      const destType = document.getElementById("wd_type")?.value || "momo";
+      const destAccount = (document.getElementById("wd_account")?.value || "").trim();
+      if (!(amount > 0)) {
+        const msg = "Enter an amount greater than zero.";
+        showWithdrawError(msg);
+        showAlertModal("Withdrawal", msg);
+        return;
+      }
+      if (!destAccount) {
+        showWithdrawError("Enter a destination account or phone number.");
+        return;
+      }
+      const bal = getBalanceForCurrency(currency);
+      if (bal != null && amount > bal + 1e-9) {
+        let fmt = `${bal.toFixed(2)} ${currency}`;
+        if (currency === "USD") {
+          fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(bal);
+        } else if (currency === "NGN") {
+          fmt = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(bal);
+        } else if (currency === "GHS") {
+          fmt = `GH₵ ${bal.toFixed(2)}`;
+        }
+        const msg = `You cannot withdraw this amount — your ${currency} balance is only ${fmt}.`;
+        showWithdrawError(msg);
+        showAlertModal("Insufficient balance", msg);
+        return;
+      }
+      const ok = await openTxConfirm(
+        `Withdraw ${amount} ${currency} via ${destType} to ${destAccount}. Please confirm.`,
+      );
+      if (!ok) {
+        setOut({ message: "Withdrawal cancelled." });
+        return;
+      }
       try {
         const data = await call("/withdrawals", "POST", {
-          currency: document.getElementById("wd_currency").value,
-          amount: Number(document.getElementById("wd_amount").value),
-          destination_type: document.getElementById("wd_type").value,
-          destination_account: document.getElementById("wd_account").value
+          currency,
+          amount,
+          destination_type: destType,
+          destination_account: destAccount,
         });
         if (data.wallet_summary) renderSummary(data.wallet_summary);
         await loadActivity();
-      } catch (e) { setOut(e); }
+        clearWithdrawError();
+        setOut({ message: "Withdrawal submitted." });
+      } catch (e) {
+        const raw =
+          typeof e.detail === "string"
+            ? e.detail
+            : Array.isArray(e.detail)
+              ? e.detail.map((x) => (x && x.msg) || String(x)).join(" ")
+              : e.detail != null
+                ? String(e.detail)
+                : "";
+        const low = raw.toLowerCase();
+        if (low.includes("insufficient") || low.includes("balance")) {
+          showWithdrawError(raw || "Insufficient balance.");
+          showAlertModal("Cannot withdraw", raw || "Insufficient balance.");
+        }
+        setOut(e);
+      }
     }
 
     async function transferSahara() {
@@ -2923,6 +3049,108 @@
       resolveTxConfirm(false);
     }
 
+    function showAlertModal(title, message) {
+      const bd = document.getElementById("alert_modal_backdrop");
+      const t = document.getElementById("alert_modal_title");
+      const p = document.getElementById("alert_modal_text");
+      if (t) t.textContent = title || "Notice";
+      if (p) p.textContent = message || "";
+      if (bd) bd.style.display = "flex";
+    }
+
+    function closeAlertModal(evt = null) {
+      if (evt && evt.target && evt.target.id !== "alert_modal_backdrop") return;
+      const bd = document.getElementById("alert_modal_backdrop");
+      if (bd) bd.style.display = "none";
+    }
+
+    function clearWithdrawError() {
+      const el = document.getElementById("wd_error");
+      if (el) {
+        el.textContent = "";
+        el.style.display = "none";
+      }
+    }
+
+    function showWithdrawError(message) {
+      const el = document.getElementById("wd_error");
+      if (el) {
+        el.textContent = message;
+        el.style.display = "block";
+      }
+    }
+
+    function getBalanceForCurrency(cur) {
+      if (!lastWalletSummary) return null;
+      const c = String(cur || "").toUpperCase();
+      if (c === "USD") return Number(lastWalletSummary.usd_balance ?? 0);
+      if (c === "GHS") return Number(lastWalletSummary.ghs_balance ?? 0);
+      if (c === "NGN") return Number(lastWalletSummary.ngn_balance ?? 0);
+      return null;
+    }
+
+    function scheduleFxPreview() {
+      if (fxPreviewTimer) clearTimeout(fxPreviewTimer);
+      fxPreviewTimer = setTimeout(() => loadFxPreview(), 280);
+    }
+
+    async function loadFxPreview() {
+      const wrap = document.getElementById("fx_preview_wrap");
+      const main = document.getElementById("fx_preview_main");
+      const sub = document.getElementById("fx_preview_sub");
+      const amt = Number(document.getElementById("quote_amount")?.value);
+      const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
+      if (!wrap || !main || !sub) return;
+      if (!token || !(amt > 0)) {
+        wrap.style.display = "none";
+        return;
+      }
+      try {
+        const data = await call(`/fx/preview?amount_usd=${encodeURIComponent(amt)}&to_currency=${encodeURIComponent(toCur)}`);
+        const sym = data.you_receive_label || (toCur === "NGN" ? "₦" : "GH₵");
+        const recv = Number(data.you_receive ?? 0);
+        const fee = Number(data.fee_usd ?? 0);
+        main.textContent = `You receive about ${sym} ${recv.toLocaleString()} (after ${fee.toFixed(2)} USD fee).`;
+        sub.textContent = `Rate used: 1 USD ≈ ${sym} ${Number(data.payout_rate || 0).toLocaleString()} · Net USD converted: ${Number(data.net_usd_after_fee || 0).toFixed(2)}`;
+        wrap.style.display = "block";
+      } catch (_) {
+        wrap.style.display = "none";
+      }
+    }
+
+    async function convertDirect() {
+      try {
+        const amt = Number(document.getElementById("quote_amount")?.value);
+        const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
+        if (!(amt > 0)) {
+          showAlertModal("Invalid amount", "Enter a USD amount greater than zero.");
+          return;
+        }
+        const usdBal = getBalanceForCurrency("USD");
+        if (usdBal != null && amt > usdBal + 1e-9) {
+          const msg = `You only have $${usdBal.toFixed(2)} USD available. Reduce the amount or add funds first.`;
+          showAlertModal("Insufficient USD balance", msg);
+          return;
+        }
+        const label = toCur === "NGN" ? "Nigerian naira" : "Ghana cedis";
+        const ok = await openTxConfirm(
+          `Convert $${amt.toFixed(2)} USD to your ${label} (${toCur}) wallet at the shown rate?`,
+        );
+        if (!ok) return;
+        const data = await call("/fx/convert-direct", "POST", { amount_usd: amt, to_currency: toCur });
+        if (data.wallet_summary) renderSummary(data.wallet_summary);
+        await loadActivity();
+        setOut({ message: data.message || "Conversion complete." });
+        scheduleFxPreview();
+      } catch (e) {
+        const d = e && typeof e.detail === "string" ? e.detail : "";
+        if (d.toLowerCase().includes("insufficient")) {
+          showAlertModal("Insufficient balance", d);
+        }
+        setOut(e);
+      }
+    }
+
     async function loadProfile() {
       sessionBootstrapFailed = false;
       try {
@@ -2932,6 +3160,7 @@
         applyPostKycMinimalView(data);
         if (isKycApproved(currentUserProfile)) {
           await loadSummary();
+          scheduleFxPreview();
           await loadPaymentMethods();
           await loadActivity();
           await loadPaypalInvoices();

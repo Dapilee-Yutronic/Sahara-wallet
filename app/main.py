@@ -30,6 +30,7 @@ from .schemas import (
     AddFundsRequest,
     AddPaymentMethodRequest,
     ConvertRequest,
+    FXConvertDirectRequest,
     FXQuoteRequest,
     FXQuoteResponse,
     KYCSubmissionRequest,
@@ -83,6 +84,8 @@ app.mount("/uploads", StaticFiles(directory="static/uploads"), name="uploads")
 # Simple pricing constants for MVP.
 MID_MARKET_USD_GHS = 14.40
 PAYOUT_USD_GHS = 14.25
+MID_MARKET_USD_NGN = 1580.0
+PAYOUT_USD_NGN = 1550.0
 FX_FEE_PERCENT = 0.015
 PAYPAL_DEMO_COMMISSION_PERCENT = 0.05
 PUBLIC_ID_PREFIX = "SAHARA"
@@ -290,17 +293,31 @@ def ensure_user_security(db: Session, user: User) -> UserSecurity:
     return row
 
 
+def _fx_rates_for(to_currency: str) -> tuple[float, float]:
+    u = (to_currency or "GHS").upper()
+    if u == "GHS":
+        return PAYOUT_USD_GHS, MID_MARKET_USD_GHS
+    if u == "NGN":
+        return PAYOUT_USD_NGN, MID_MARKET_USD_NGN
+    raise HTTPException(status_code=400, detail="Unsupported currency; use GHS or NGN")
+
+
 def wallet_summary(db: Session, user_id: int) -> dict:
     usd_wallet = get_or_create_wallet(db, user_id, "USD")
     ghs_wallet = get_or_create_wallet(db, user_id, "GHS")
+    ngn_wallet = get_or_create_wallet(db, user_id, "NGN")
     ghs_as_usd = ghs_wallet.balance / PAYOUT_USD_GHS if PAYOUT_USD_GHS else 0.0
-    total_usd_equivalent = usd_wallet.balance + ghs_as_usd
+    ngn_as_usd = ngn_wallet.balance / PAYOUT_USD_NGN if PAYOUT_USD_NGN else 0.0
+    total_usd_equivalent = usd_wallet.balance + ghs_as_usd + ngn_as_usd
     return {
         "usd_balance": round(usd_wallet.balance, 2),
         "ghs_balance": round(ghs_wallet.balance, 2),
+        "ngn_balance": round(ngn_wallet.balance, 2),
         "ghs_usd_equivalent": round(ghs_as_usd, 2),
+        "ngn_usd_equivalent": round(ngn_as_usd, 2),
         "total_usd_equivalent": round(total_usd_equivalent, 2),
         "display_rate_usd_to_ghs": PAYOUT_USD_GHS,
+        "display_rate_usd_to_ngn": PAYOUT_USD_NGN,
     }
 
 
@@ -317,6 +334,7 @@ def seed_admin():
             db.commit()
             get_or_create_wallet(db, admin.id, "USD")
             get_or_create_wallet(db, admin.id, "GHS")
+            get_or_create_wallet(db, admin.id, "NGN")
         else:
             admin = User(
                 email=DEFAULT_ADMIN_EMAIL,
@@ -330,6 +348,7 @@ def seed_admin():
             db.refresh(admin)
             get_or_create_wallet(db, admin.id, "USD")
             get_or_create_wallet(db, admin.id, "GHS")
+            get_or_create_wallet(db, admin.id, "NGN")
 
         for u in db.query(User).all():
             if not u.referral_code:
@@ -382,6 +401,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
     get_or_create_wallet(db, user.id, "USD")
     get_or_create_wallet(db, user.id, "GHS")
+    get_or_create_wallet(db, user.id, "NGN")
 
     token = create_access_token({"sub": str(user.id)})
     return TokenResponse(access_token=token)
@@ -829,6 +849,83 @@ def create_quote(payload: FXQuoteRequest, current_user: User = Depends(get_curre
     return response
 
 
+@app.get("/fx/preview")
+def fx_preview(
+    amount_usd: float,
+    to_currency: str = "GHS",
+    current_user: User = Depends(get_current_user),
+):
+    if amount_usd <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    to_u = to_currency.strip().upper()
+    payout_rate, mid_rate = _fx_rates_for(to_u)
+    fee = round(amount_usd * FX_FEE_PERCENT, 2)
+    net = max(amount_usd - fee, 0.0)
+    target = round(net * payout_rate, 2)
+    sym = "₦" if to_u == "NGN" else "GH₵"
+    return {
+        "to_currency": to_u,
+        "amount_usd": round(amount_usd, 2),
+        "fee_usd": fee,
+        "net_usd_after_fee": round(net, 2),
+        "payout_rate": payout_rate,
+        "you_receive": target,
+        "you_receive_label": sym,
+        "mid_market_rate": mid_rate,
+    }
+
+
+@app.post("/fx/convert-direct")
+def fx_convert_direct(
+    payload: FXConvertDirectRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    to_u = (payload.to_currency or "GHS").strip().upper()
+    payout_rate, mid_rate = _fx_rates_for(to_u)
+    amt = float(payload.amount_usd)
+    if amt <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    fee = round(amt * FX_FEE_PERCENT, 2)
+    net = max(amt - fee, 0.0)
+    target = round(net * payout_rate, 2)
+
+    usd_wallet = get_or_create_wallet(db, current_user.id, "USD")
+    tgt_wallet = get_or_create_wallet(db, current_user.id, to_u)
+
+    if usd_wallet.balance < amt:
+        raise HTTPException(status_code=400, detail="Insufficient USD balance")
+
+    usd_wallet.balance -= amt
+    tgt_wallet.balance += target
+
+    quote = FXQuote(
+        user_id=current_user.id,
+        from_currency="USD",
+        to_currency=to_u,
+        source_amount=amt,
+        rate=payout_rate,
+        fee=fee,
+        target_amount=target,
+        status="executed",
+    )
+    db.add(quote)
+    db.flush()
+    post_ledger(db, current_user.id, "FX_DEBIT", "USD", -amt, f"FX#{quote.id}")
+    post_ledger(db, current_user.id, "FX_CREDIT", to_u, target, f"FX#{quote.id}")
+    post_ledger(db, current_user.id, "FX_FEE", "USD", -fee, f"FX#{quote.id}")
+    db.commit()
+
+    source_mid = round(amt * mid_rate, 2)
+    operator_revenue = round(source_mid - target, 2)
+    return {
+        "message": f"Converted to {to_u}",
+        "operator_revenue_local": operator_revenue,
+        "wallet_summary": wallet_summary(db, current_user.id),
+    }
+
+
 @app.post("/fx/convert")
 def convert_quote(payload: ConvertRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     quote = db.query(FXQuote).filter(FXQuote.id == payload.quote_id, FXQuote.user_id == current_user.id).first()
@@ -868,7 +965,7 @@ def request_withdrawal(
 ):
     if payload.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
-    if payload.currency not in ("USD", "GHS"):
+    if payload.currency not in ("USD", "GHS", "NGN"):
         raise HTTPException(status_code=400, detail="Unsupported currency")
     if payload.destination_type not in ("momo", "bank"):
         raise HTTPException(status_code=400, detail="destination_type must be momo or bank")
