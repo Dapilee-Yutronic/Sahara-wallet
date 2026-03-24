@@ -74,7 +74,8 @@ def _sqlite_add_kyc_face_column() -> None:
         pass
 
 
-_sqlite_add_kyc_face_column()
+if engine.dialect.name == "sqlite":
+    _sqlite_add_kyc_face_column()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="static/uploads"), name="uploads")
@@ -135,7 +136,8 @@ def _sqlite_migrate_referrals() -> None:
         pass
 
 
-_sqlite_migrate_referrals()
+if engine.dialect.name == "sqlite":
+    _sqlite_migrate_referrals()
 
 
 def ensure_user_referral_code(db: Session, user: User) -> str:

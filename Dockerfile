@@ -3,7 +3,8 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
-# Persist DB on a mounted volume (set in your host UI) so data survives redeploys
+# SQLite: mount a Railway volume on /data so this file survives redeploys.
+# Better: use Railway Postgres — add the Postgres service; DATABASE_URL is injected automatically.
 ENV SQLITE_PATH=/data/global_wallet.db
 
 COPY requirements.txt .
