@@ -581,6 +581,32 @@
       line-height: 1.45;
     }
 
+    .activity-item-detail .activity-detail-meta {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .activity-item-detail .activity-ref {
+      margin-top: 6px;
+      font-size: 11px;
+      word-break: break-word;
+      color: var(--muted);
+    }
+
+    #card_activity_full .activity-list {
+      max-height: min(520px, 70vh);
+    }
+
+    @media (max-width: 768px) {
+      .activity-actions-desktop-only {
+        display: none !important;
+      }
+    }
+
     .skeleton {
       position: relative;
       overflow: hidden;
@@ -1243,7 +1269,7 @@
         bottom: max(10px, env(safe-area-inset-bottom, 0px));
         z-index: 1300;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 4px;
         padding: 8px 6px;
         background: color-mix(in srgb, var(--card) 40%, transparent);
@@ -1767,12 +1793,23 @@
         </div>
       </div>
 
-      <div id="card_activity" class="card span-6">
-        <div class="eyebrow">Timeline</div>
+      <div id="card_activity_home" class="card span-6">
+        <div class="eyebrow">Home</div>
         <h3>Recent transactions</h3>
-        <div class="sub">Activity and account updates in plain English.</div>
-        <div id="activity_list" class="activity-list" style="margin-top:10px;"></div>
+        <div class="sub">Latest three items. Use Show more for the full activity screen.</div>
+        <div id="activity_list_home" class="activity-list" style="margin-top:10px;"></div>
         <div class="activity-actions-row">
+          <button id="activity_home_more_btn" class="secondary" type="button" onclick="setMobileTab('activity')" style="display:none;">Show more</button>
+          <button id="activity_home_pdf_btn" class="secondary" type="button" onclick="downloadActivityPdf()" style="display:none;">Download PDF</button>
+        </div>
+      </div>
+
+      <div id="card_activity_full" class="card span-6">
+        <div class="eyebrow">Timeline</div>
+        <h3>Activity</h3>
+        <div class="sub">Full transaction details (most recent first).</div>
+        <div id="activity_list_full" class="activity-list" style="margin-top:10px;"></div>
+        <div class="activity-actions-row activity-actions-desktop-only">
           <button id="activity_more_btn" class="secondary" type="button" onclick="toggleActivityView()" style="display:none;">Show more</button>
           <button id="activity_pdf_btn" class="secondary" type="button" onclick="downloadActivityPdf()" style="display:none;">Download PDF</button>
         </div>
@@ -1788,6 +1825,18 @@
           <path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span>Home</span>
+      </span>
+    </button>
+    <button id="mobile_tab_activity" class="secondary" type="button" onclick="setMobileTab('activity')">
+      <span class="tab-inner">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M7 14l2.2-2.2 2.2 2.2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="7" cy="14" r="1" fill="currentColor"/>
+          <circle cx="11.4" cy="14" r="1" fill="currentColor"/>
+          <circle cx="15.4" cy="10" r="1" fill="currentColor"/>
+        </svg>
+        <span>Activity</span>
       </span>
     </button>
     <button id="mobile_tab_payments" class="secondary" type="button" onclick="setMobileTab('payments')">
@@ -2015,6 +2064,9 @@
 
     window.addEventListener("resize", () => {
       applyAuthView();
+      if (activityCache && activityCache.length) {
+        renderActivity(activityCache);
+      }
     });
 
     document.addEventListener("visibilitychange", () => {
@@ -2370,9 +2422,13 @@
     }
 
     function setMobileTab(tab) {
-      currentMobileTab = tab === "payments" ? "payments" : "home";
+      if (tab === "payments") currentMobileTab = "payments";
+      else if (tab === "activity") currentMobileTab = "activity";
+      else currentMobileTab = "home";
       if (currentMobileTab === "home") {
         loadSummary().catch(() => {});
+        loadActivity();
+      } else if (currentMobileTab === "activity") {
         loadActivity();
       } else if (currentMobileTab === "payments") {
         loadPaymentMethods();
@@ -2393,6 +2449,7 @@
 
       const tabs = {
         home: document.getElementById("mobile_tab_home"),
+        activity: document.getElementById("mobile_tab_activity"),
         payments: document.getElementById("mobile_tab_payments"),
       };
 
@@ -2402,10 +2459,11 @@
         btn.classList.toggle("tab-active", currentMobileTab === key);
       });
 
-      const homeCards = ["card_greeting", "card_wallet_snapshot", "card_activity"];
-      const paymentCards = ["card_payment_methods", "card_wallet_ops", "card_quick_actions"];
+      const homeCards = ["card_greeting", "card_wallet_snapshot", "card_activity_home"];
+      const activityTabCards = ["card_activity_full"];
+      const paymentCards = ["card_wallet_ops", "card_payment_methods", "card_quick_actions"];
 
-      const allMobileManagedCards = [...homeCards, ...paymentCards];
+      const allMobileManagedCards = [...homeCards, ...activityTabCards, ...paymentCards];
       allMobileManagedCards.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
@@ -2413,6 +2471,11 @@
 
       if (currentMobileTab === "payments") {
         paymentCards.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "block";
+        });
+      } else if (currentMobileTab === "activity") {
+        activityTabCards.forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.style.display = "block";
         });
@@ -2436,7 +2499,7 @@
       const greetingSub = document.getElementById("greeting_subtext");
       if (greetingSub && approved && hasPhoto) {
         greetingSub.textContent =
-          "Home: balances and recent activity (auto-updated). Payments: methods & wallet operations.";
+          "Home: balances & 3 recent items · Activity: full details · Payments: wallet & methods.";
       }
       const avatar = document.getElementById("greeting_avatar");
       const avatarWrap = document.getElementById("greeting_avatar_wrap");
@@ -2459,12 +2522,26 @@
       const walletOps = document.getElementById("card_wallet_ops");
       const quickActions = document.getElementById("card_quick_actions");
       const paymentCard = document.getElementById("card_payment_methods");
-      const activityCard = document.getElementById("card_activity");
-      if (grid && greetingCard && profilePhoto && kycCard && walletSnapshot && walletOps && quickActions && paymentCard && activityCard && onboardingPending) {
+      const activityHome = document.getElementById("card_activity_home");
+      const activityFull = document.getElementById("card_activity_full");
+      if (
+        grid &&
+        greetingCard &&
+        profilePhoto &&
+        kycCard &&
+        walletSnapshot &&
+        walletOps &&
+        quickActions &&
+        paymentCard &&
+        activityHome &&
+        activityFull &&
+        onboardingPending
+      ) {
         if (approved) {
           grid.appendChild(greetingCard);
           grid.appendChild(walletSnapshot);
-          grid.appendChild(activityCard);
+          grid.appendChild(activityHome);
+          grid.appendChild(activityFull);
           grid.appendChild(paymentCard);
           grid.appendChild(walletOps);
           grid.appendChild(quickActions);
@@ -2521,11 +2598,27 @@
       const snap = document.getElementById("card_wallet_snapshot");
       if (snap) snap.style.display = profileReady && approved ? "block" : "none";
 
-      ["card_wallet_ops", "card_quick_actions", "card_payment_methods", "card_activity"].forEach((id) => {
+      ["card_wallet_ops", "card_quick_actions", "card_payment_methods"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.style.display = profileReady && approved ? "block" : "none";
       });
+
+      const mobileNav = isPhone && canShowMobileBottomNav();
+      const activityHome = document.getElementById("card_activity_home");
+      const activityFull = document.getElementById("card_activity_full");
+      if (activityHome && activityFull) {
+        if (!profileReady || !approved) {
+          activityHome.style.display = "none";
+          activityFull.style.display = "none";
+        } else if (mobileNav) {
+          activityHome.style.display = "none";
+          activityFull.style.display = "none";
+        } else {
+          activityHome.style.display = "none";
+          activityFull.style.display = "block";
+        }
+      }
 
       const profileCard = document.getElementById("card_profile_photo");
       if (profileCard) {
@@ -3095,30 +3188,96 @@
       } catch (e) {}
     }
 
-    function renderActivity(rows) {
-      activityCache = rows || [];
-      const root = document.getElementById("activity_list");
-      const moreBtn = document.getElementById("activity_more_btn");
-      const pdfBtn = document.getElementById("activity_pdf_btn");
-      if (!root) return;
-      if (!activityCache.length) {
-        root.innerHTML = `<div class="activity-item"><div class="activity-summary">No recent activity yet.</div></div>`;
-        if (moreBtn) moreBtn.style.display = "none";
-        if (pdfBtn) pdfBtn.style.display = "none";
-        return;
-      }
-      const visibleRows = activityExpanded ? activityCache : activityCache.slice(0, 3);
-      root.innerHTML = visibleRows.map((r) => `
+    function renderActivityRowsSimple(rows) {
+      return rows.map(
+        (r) => `
         <div class="activity-item">
           <div class="time">${new Date(r.timestamp).toLocaleString()}</div>
           <div class="activity-summary">${escapeHtml(r.summary || "")}</div>
         </div>
-      `).join("");
-      if (moreBtn) {
-        moreBtn.style.display = activityCache.length > 3 ? "inline-block" : "none";
-        moreBtn.textContent = activityExpanded ? "Show less" : "Show more";
+      `,
+      ).join("");
+    }
+
+    function renderActivityRowDetail(r) {
+      const when = new Date(r.timestamp).toLocaleString();
+      const summary = escapeHtml(r.summary || "");
+      let meta = "";
+      if (r.type === "withdrawal") {
+        const parts = [
+          r.entry_type ? `Type: ${r.entry_type}` : "",
+          r.amount != null && r.currency ? `Amount: ${r.amount} ${r.currency}` : "",
+          r.destination_type ? `Destination: ${r.destination_type}` : "",
+          r.destination_account_last4 ? `Account ending: …${r.destination_account_last4}` : "",
+          r.status ? `Status: ${r.status}` : "",
+        ].filter(Boolean);
+        meta = parts.join(" · ");
+      } else {
+        const parts = [
+          r.entry_type ? `Type: ${r.entry_type}` : "",
+          r.amount != null && r.currency ? `Amount: ${r.amount} ${r.currency}` : "",
+        ].filter(Boolean);
+        meta = parts.join(" · ") || "Wallet activity";
       }
-      if (pdfBtn) pdfBtn.style.display = "inline-block";
+      const refRaw = r.reference && String(r.reference).trim();
+      const ref = refRaw ? escapeHtml(String(refRaw).slice(0, 500)) : "";
+      return `
+        <div class="activity-item activity-item-detail">
+          <div class="time">${when}</div>
+          <div class="activity-summary">${summary}</div>
+          <div class="activity-detail-meta">${escapeHtml(meta)}</div>
+          ${ref ? `<div class="activity-ref">Reference: ${ref}</div>` : ""}
+        </div>`;
+    }
+
+    function renderActivity(rows) {
+      activityCache = rows || [];
+      const homeRoot = document.getElementById("activity_list_home");
+      const fullRoot = document.getElementById("activity_list_full");
+      const mobileNav = isMobileTabLayout() && canShowMobileBottomNav();
+      const moreBtn = document.getElementById("activity_more_btn");
+      const pdfBtn = document.getElementById("activity_pdf_btn");
+      const homeMore = document.getElementById("activity_home_more_btn");
+      const homePdf = document.getElementById("activity_home_pdf_btn");
+
+      const empty = `<div class="activity-item"><div class="activity-summary">No recent activity yet.</div></div>`;
+      if (!activityCache.length) {
+        if (homeRoot) homeRoot.innerHTML = empty;
+        if (fullRoot) fullRoot.innerHTML = empty;
+        if (moreBtn) moreBtn.style.display = "none";
+        if (pdfBtn) pdfBtn.style.display = "none";
+        if (homeMore) homeMore.style.display = "none";
+        if (homePdf) homePdf.style.display = "none";
+        return;
+      }
+
+      if (homeRoot) {
+        homeRoot.innerHTML = renderActivityRowsSimple(activityCache.slice(0, 3));
+      }
+
+      if (fullRoot) {
+        if (mobileNav) {
+          fullRoot.innerHTML = activityCache.map((r) => renderActivityRowDetail(r)).join("");
+        } else {
+          const visibleRows = activityExpanded ? activityCache : activityCache.slice(0, 3);
+          fullRoot.innerHTML = renderActivityRowsSimple(visibleRows);
+        }
+      }
+
+      if (mobileNav) {
+        if (homeMore) homeMore.style.display = activityCache.length > 3 ? "inline-block" : "none";
+        if (homePdf) homePdf.style.display = "inline-block";
+        if (moreBtn) moreBtn.style.display = "none";
+        if (pdfBtn) pdfBtn.style.display = "none";
+      } else {
+        if (moreBtn) {
+          moreBtn.style.display = activityCache.length > 3 ? "inline-block" : "none";
+          moreBtn.textContent = activityExpanded ? "Show less" : "Show more";
+        }
+        if (pdfBtn) pdfBtn.style.display = "inline-block";
+        if (homeMore) homeMore.style.display = "none";
+        if (homePdf) homePdf.style.display = "none";
+      }
     }
 
     function escapeHtml(s) {
@@ -3226,16 +3385,18 @@
     async function loadActivity() {
       try {
         activityExpanded = false;
-        const root = document.getElementById("activity_list");
-        if (root) {
-          root.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
-        }
+        const homeRoot = document.getElementById("activity_list_home");
+        const fullRoot = document.getElementById("activity_list_full");
+        const sk = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
+        if (homeRoot) homeRoot.innerHTML = sk;
+        if (fullRoot) fullRoot.innerHTML = sk;
         const data = await call("/me/activity");
         renderActivity(data);
       } catch (e) {}
     }
 
     function toggleActivityView() {
+      if (isMobileTabLayout() && canShowMobileBottomNav()) return;
       activityExpanded = !activityExpanded;
       renderActivity(activityCache);
     }

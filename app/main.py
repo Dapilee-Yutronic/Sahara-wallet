@@ -1151,7 +1151,18 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
             summary = f"You received {round(e.amount, 2)} {e.currency} from {sender_name}."
         elif e.entry_type == "REFERRAL_BONUS":
             summary = f"Referral bonus: you earned {round(e.amount, 2)} {e.currency} when your invite reached the qualifying activity."
-        events.append({"timestamp": e.created_at, "type": "wallet", "summary": summary})
+        ref = (e.reference or "")[:512]
+        events.append(
+            {
+                "timestamp": e.created_at,
+                "type": "wallet",
+                "summary": summary,
+                "entry_type": e.entry_type,
+                "amount": round(e.amount, 2),
+                "currency": e.currency,
+                "reference": ref,
+            }
+        )
 
     for w in withdrawals:
         events.append(
@@ -1163,6 +1174,14 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
                     f"account ending in {w.destination_account[-4:] if w.destination_account else '----'} "
                     f"(status: {w.status})."
                 ),
+                "entry_type": "WITHDRAWAL",
+                "amount": round(w.amount, 2),
+                "currency": w.currency,
+                "reference": "",
+                "withdrawal_id": w.id,
+                "destination_type": w.destination_type,
+                "destination_account_last4": (w.destination_account[-4:] if w.destination_account else None),
+                "status": w.status,
             }
         )
 
