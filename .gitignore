@@ -5,6 +5,7 @@ __pycache__/
 *.db
 .env
 .env.*
+!.env.example
 .pytest_cache/
 .mypy_cache/
 .idea/

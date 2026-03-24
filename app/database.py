@@ -1,8 +1,12 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+# Load `.env` from the project root when developing locally (Railway injects env vars directly).
+load_dotenv()
 
 # Production (Railway, etc.): add the Postgres plugin and let Railway set DATABASE_URL.
 # That database lives on Railway's servers and survives redeploys.
