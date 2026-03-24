@@ -1,0 +1,3248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#1c1b1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sahara" />
+  <link rel="manifest" href="/static/manifest.webmanifest" />
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/static/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" />
+  <title>Global Wallet MVP</title>
+  <style>
+    :root {
+      --font-brand: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, sans-serif;
+      --bg: #f6f4ef;
+      --card: #ffffff;
+      --text: #141414;
+      --muted: #6d6a64;
+      --primary: #1c1b1a;
+      --primary-hover: #000000;
+      --accent: #8b5cf6;
+      /* Restrained gold for premium hints (support, highlights) — use sparingly */
+      --gold: #a67c52;
+      --gold-mid: #c4a574;
+      --gold-soft: color-mix(in srgb, #c4a574 22%, transparent);
+      --border: #e8e4dc;
+      --success: #0b7a57;
+      --warning: #9a6700;
+      --surface-glow: rgba(20, 20, 20, 0.05);
+    }
+
+    [data-theme="dark"] {
+      --bg: #10100f;
+      --card: #181716;
+      --text: #f5f2ec;
+      --muted: #b3aea4;
+      --primary: #f5f2ec;
+      --primary-hover: #ffffff;
+      --accent: #a78bfa;
+      --gold: #d4b896;
+      --gold-mid: #e8d4b0;
+      --gold-soft: color-mix(in srgb, #d4b896 20%, transparent);
+      --border: #2a2826;
+      --success: #36c790;
+      --warning: #f5b84a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      height: 100%;
+      margin: 0;
+      /* Match page background so rubber-band / overscroll never flashes white */
+      background-color: var(--bg);
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(139, 92, 246, 0.12), transparent 26%),
+        radial-gradient(circle at 90% 5%, rgba(20, 20, 20, 0.06), transparent 30%),
+        linear-gradient(180deg, color-mix(in srgb, var(--bg) 90%, #ffffff 10%), var(--bg));
+      background-color: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overscroll-behavior-y: none;
+      touch-action: manipulation;
+    }
+
+    /* Sign-in / register: stable full-screen frame (no white gaps, no stretchy zoom feel) */
+    body.gw-auth-screen {
+      overflow-x: hidden;
+    }
+
+    body.gw-auth-screen .wrap {
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
+      display: flex;
+      flex-direction: column;
+      padding-top: max(16px, env(safe-area-inset-top, 0px));
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    }
+
+    body.gw-auth-screen .grid {
+      flex: 1 0 auto;
+      align-content: start;
+    }
+
+    .wrap {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 20px 36px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      position: sticky;
+      top: 10px;
+      z-index: 30;
+      backdrop-filter: blur(10px);
+      background: color-mix(in srgb, var(--card) 88%, #ffffff 12%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 10px 12px;
+      box-shadow: 0 8px 20px rgba(20, 20, 20, 0.06);
+    }
+
+    /* Logged-in: floating glass header (no solid white block) */
+    body.gw-logged-in .topbar {
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(14px) saturate(1.08);
+      background: color-mix(in srgb, var(--card) 42%, transparent);
+      border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+      padding-top: max(10px, env(safe-area-inset-top, 0px));
+    }
+
+    [data-theme="dark"] body.gw-logged-in .topbar {
+      background: color-mix(in srgb, var(--card) 38%, transparent);
+      box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    body.gw-logged-in .topbar-right {
+      display: none !important;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .auth-hero {
+      display: none;
+      text-align: center;
+      margin: 10px auto 18px;
+      padding: 10px 0 4px;
+    }
+
+    body.gw-auth-screen .auth-hero {
+      margin-top: 4px;
+      margin-bottom: 12px;
+      padding-top: max(4px, env(safe-area-inset-top, 0px));
+    }
+
+    .auth-hero .logo-mark {
+      margin: 0 auto 16px;
+      width: 98px;
+      height: 98px;
+      border-radius: 20px;
+    }
+
+    .auth-hero .logo-mark svg {
+      width: 64px;
+      height: 64px;
+    }
+
+    .auth-title {
+      margin: 0;
+      font-size: 42px;
+      line-height: 1.06;
+    }
+
+    .auth-sub {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .install-app-btn {
+      margin-top: 12px;
+      min-width: 210px;
+    }
+
+    .install-app-note {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .auth-support-hint {
+      margin: 14px 0 0;
+      font-size: 13px;
+    }
+
+    .link-support {
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--gold);
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--gold) 45%, transparent);
+      text-underline-offset: 3px;
+    }
+
+    .link-support:hover {
+      color: var(--gold-mid);
+    }
+
+    .logo-mark {
+      width: 72px;
+      height: 72px;
+      border-radius: 17px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--card) 88%, var(--border) 12%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid color-mix(in srgb, var(--border) 80%, var(--text) 20%);
+      box-shadow: 0 6px 18px rgba(20, 20, 20, 0.07);
+    }
+
+    .logo-mark svg {
+      width: 50px;
+      height: 50px;
+      overflow: visible;
+    }
+
+    /* “Sahara” wordmark — refined, not heavy */
+    .brand-wordmark {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      letter-spacing: -0.038em;
+      line-height: 1.1;
+    }
+
+    .brand .brand-wordmark {
+      font-size: 30px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .sub {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--card) 72%, var(--primary) 8%);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 8px;
+      margin-bottom: 8px;
+    }
+
+    .token-pill {
+      background: #e6f2ff;
+      color: #133979;
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 8px 12px;
+      border: 1px solid #c8dcfb;
+    }
+
+    [data-theme="dark"] .token-pill {
+      background: #13213a;
+      color: #c5d8f8;
+      border: 1px solid #2a3e63;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(20, 20, 20, 0.06), 0 1px 0 var(--surface-glow) inset;
+      transition: box-shadow 0.2s ease, transform 0.18s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(20, 20, 20, 0.1);
+      border-color: color-mix(in srgb, var(--border) 76%, var(--accent) 24%);
+    }
+
+    [data-theme="dark"] .card {
+      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      letter-spacing: -0.015em;
+      font-weight: 620;
+    }
+
+    .referral-promo {
+      margin: 0 0 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+      background: color-mix(in srgb, var(--accent) 9%, var(--card) 91%);
+    }
+
+    .referral-promo-badge {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      font-weight: 750;
+      color: var(--accent);
+      margin: 0 0 6px;
+    }
+
+    .referral-promo-text {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .referral-promo-text strong {
+      font-weight: 750;
+      color: color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
+    }
+
+    [data-theme="dark"] .referral-promo {
+      border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+      background: color-mix(in srgb, var(--accent) 14%, var(--card) 86%);
+    }
+
+    .referral-demo-box {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .referral-demo-box code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .password-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .password-wrap button {
+      margin: 0;
+      width: auto;
+      min-height: 42px;
+      white-space: nowrap;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--card) 92%, #f7f4ee 8%);
+      outline: none;
+      font-size: 14px;
+    }
+
+    [data-theme="dark"] input,
+    [data-theme="dark"] select {
+      background: #0e1729;
+      color: #e6eefc;
+      border-color: #2a3a58;
+    }
+
+    input:focus, select:focus {
+      border-color: color-mix(in srgb, var(--accent) 72%, #ffffff 28%);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.16);
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1c1b1a, #2d2b29);
+      color: #fff;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+      margin-right: 8px;
+      margin-top: 6px;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #000000, #1a1918);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    button.secondary {
+      background: color-mix(in srgb, var(--card) 84%, #ece8df 16%);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.secondary:hover {
+      background: color-mix(in srgb, var(--card) 74%, #ebe5da 26%);
+    }
+
+    [data-theme="dark"] button.secondary {
+      background: #22201e;
+      color: #f2ede3;
+      border-color: #34312e;
+    }
+
+    [data-theme="dark"] button.secondary:hover {
+      background: #2a2724;
+    }
+
+    .auth-switch {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .auth-switch button {
+      width: auto;
+      margin: 0;
+      padding: 0;
+      min-height: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: underline;
+      box-shadow: none;
+      cursor: pointer;
+    }
+
+    .auth-switch button:hover {
+      transform: none;
+      box-shadow: none;
+      color: color-mix(in srgb, var(--accent) 80%, var(--text) 20%);
+      background: transparent;
+    }
+
+    .mobile-quick-bar {
+      display: none;
+    }
+
+    .wallet-metrics {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .hero-greeting {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-greeting h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .hero-greeting p {
+      margin: 4px 0 0;
+      color: var(--muted);
+    }
+
+    .status-banner {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(14, 165, 164, 0.08);
+      color: var(--text);
+      font-size: 13px;
+      display: none;
+    }
+
+    .activity-list {
+      display: grid;
+      gap: 8px;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .activity-actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .activity-actions-row button {
+      width: auto;
+      min-width: 0;
+    }
+
+    .activity-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: color-mix(in srgb, var(--card) 94%, var(--accent) 6%);
+      box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 12%, transparent);
+    }
+
+    [data-theme="dark"] .activity-item {
+      background: color-mix(in srgb, var(--card) 92%, var(--text) 8%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .activity-item .time {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .activity-item .activity-summary {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--card) 70%, var(--border) 30%);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-height: 56px;
+    }
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+      animation: shimmer 1.1s infinite;
+    }
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+
+    [data-theme="dark"] .skeleton::after {
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+    }
+
+    .greet-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Perfect circle: image sits inside a clipping ring */
+    .avatar-ring {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--border) 88%, var(--text) 12%),
+        0 4px 14px rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      background: var(--card);
+    }
+
+    .avatar-ring .avatar-circle {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      background: color-mix(in srgb, var(--accent) 12%, var(--card) 88%);
+    }
+
+    [data-theme="dark"] .avatar-ring .avatar-circle {
+      background: color-mix(in srgb, var(--card) 80%, #2a2826 20%);
+    }
+
+    .avatar-circle {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      background: color-mix(in srgb, var(--accent) 14%, var(--card) 86%);
+      cursor: pointer;
+    }
+
+    [data-theme="dark"] .avatar-circle {
+      background: color-mix(in srgb, var(--card) 75%, #3d3a36 25%);
+    }
+
+    .avatar-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 18, 32, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2200;
+    }
+
+    .avatar-modal {
+      width: min(420px, 92vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      text-align: center;
+    }
+
+    .avatar-preview-stack {
+      margin: 8px auto 14px;
+      display: block;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .avatar-preview-wrap {
+      position: relative;
+      width: 148px;
+      height: 148px;
+      margin: 0 auto;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--border) 85%, var(--text) 15%),
+        0 10px 28px rgba(0, 0, 0, 0.12);
+      background: var(--card);
+    }
+
+    .avatar-photo-icon-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 0 10px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+      pointer-events: none;
+    }
+
+    .avatar-photo-icon-row .avatar-icon-btn {
+      pointer-events: auto;
+    }
+
+    .avatar-icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid color-mix(in srgb, #fff 35%, transparent);
+      background: color-mix(in srgb, var(--card) 22%, rgba(0, 0, 0, 0.72));
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.12s ease, background 0.12s ease;
+    }
+
+    .avatar-icon-btn:hover {
+      background: color-mix(in srgb, var(--accent) 35%, rgba(0, 0, 0, 0.75));
+      transform: scale(1.04);
+    }
+
+    .avatar-icon-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .avatar-icon-btn svg {
+      flex-shrink: 0;
+    }
+
+    .avatar-preview-large {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      border: none;
+      display: block;
+    }
+
+    .avatar-actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .avatar-actions-compact {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .profile-modal-explainer {
+      margin: 0;
+      padding: 12px 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, var(--muted) 8%);
+    }
+
+    [data-theme="dark"] .profile-modal-explainer {
+      background: color-mix(in srgb, var(--card) 96%, var(--gold) 4%);
+      border-color: color-mix(in srgb, var(--border) 85%, var(--gold) 15%);
+    }
+
+    .profile-modal-explainer .eyebrow {
+      margin-bottom: 4px;
+    }
+
+    .profile-modal-explainer-title {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      color: var(--text);
+    }
+
+    .profile-modal-explainer .sub {
+      margin: 0;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .profile-modal-explainer .profile-modal-referral-note {
+      margin-top: 10px;
+    }
+
+    .profile-modal-field {
+      text-align: left;
+      margin-bottom: 8px;
+    }
+
+    .profile-modal-field .k {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .profile-modal-field .v {
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .profile-modal-scroll {
+      max-height: min(72vh, 640px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      text-align: left;
+      padding-right: 4px;
+      margin: 0 -4px 0 0;
+    }
+
+    .profile-modal-scroll h3 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .profile-modal-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0 12px;
+    }
+
+    .profile-modal-settings .k {
+      margin-bottom: 6px;
+    }
+
+    #profile_logout_btn {
+      margin-top: 8px;
+    }
+
+    .tx-confirm-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 18, 32, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2300;
+      padding: 16px;
+    }
+
+    .tx-confirm-modal {
+      width: min(420px, 92vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+      padding: 14px;
+      text-align: left;
+    }
+
+    .tx-confirm-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .tx-confirm-text {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .tx-confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .install-help-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 18, 32, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2400;
+      padding: 16px;
+    }
+
+    .install-help-modal {
+      width: min(440px, 92vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+      padding: 14px;
+    }
+
+    .install-help-modal h4 {
+      margin: 0 0 8px;
+    }
+
+    .install-help-modal p {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .support-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 18, 32, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2400;
+      padding: 16px;
+    }
+
+    .support-modal {
+      width: min(420px, 92vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+      padding: 16px 16px 14px;
+      text-align: left;
+    }
+
+    .support-modal h4 {
+      margin: 0 0 10px;
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--gold-soft);
+    }
+
+    .support-modal .sub {
+      margin: 0 0 10px;
+      font-size: 13px;
+    }
+
+    .support-email {
+      display: inline-block;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--gold);
+      text-decoration: none;
+      margin-bottom: 10px;
+    }
+
+    .support-email:hover {
+      color: var(--gold-mid);
+      text-decoration: underline;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--card) 90%, #ffffff 10%),
+        color-mix(in srgb, var(--card) 90%, #f6f1e8 10%)
+      );
+    }
+
+    [data-theme="dark"] .metric {
+      background: linear-gradient(180deg, #1a1918, #151413);
+      border-color: #2f2c29;
+    }
+
+    .metric .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .metric .value {
+      font-weight: 680;
+      font-size: 17px;
+      word-break: break-word;
+    }
+
+    .value.success { color: var(--success); }
+    .value.warning { color: var(--warning); }
+
+    pre {
+      margin: 0;
+      background: #0b1220;
+      color: #d1e3ff;
+      border-radius: 12px;
+      padding: 14px;
+      max-height: 320px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    [data-theme="dark"] pre {
+      background: #050a14;
+      color: #c8dcff;
+      border: 1px solid #1f2f4a;
+    }
+
+    @media (max-width: 960px) {
+      .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .wallet-metrics { grid-template-columns: 1fr 1fr; }
+      .row, .row-3 { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        padding: 12px 12px 96px;
+      }
+
+      /* Logged-out: no bottom nav — remove extra scroll gap */
+      body.gw-auth-screen .wrap {
+        padding: max(10px, env(safe-area-inset-top, 0px)) 14px max(18px, env(safe-area-inset-bottom, 0px));
+      }
+
+      .topbar {
+        top: 0;
+        border-radius: 14px;
+        padding: 9px 10px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+      }
+
+      .brand {
+        gap: 10px;
+      }
+
+      .logo-mark {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+      }
+
+      .logo-mark svg {
+        width: 40px;
+        height: 40px;
+      }
+
+      .brand .brand-wordmark {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.036em;
+      }
+
+      h1 {
+        font-size: 18px;
+        font-weight: 620;
+      }
+
+      .sub {
+        font-size: 11px;
+        margin-top: 2px;
+      }
+
+      .topbar-right {
+        gap: 6px;
+      }
+
+      .topbar-right .token-pill {
+        display: none;
+      }
+
+      .topbar-right a {
+        display: none;
+      }
+
+      .grid {
+        gap: 10px;
+      }
+
+      .auth-hero .logo-mark {
+        width: 90px;
+        height: 90px;
+        border-radius: 20px;
+      }
+
+      .auth-hero .logo-mark svg {
+        width: 60px;
+        height: 60px;
+      }
+
+      .auth-title {
+        font-size: 36px;
+      }
+
+      .auth-sub {
+        font-size: 12px;
+      }
+
+      .card {
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+      }
+
+      .card h3 {
+        font-size: 15px;
+        margin-bottom: 10px;
+        letter-spacing: -0.01em;
+      }
+
+      .status-banner {
+        font-size: 12px;
+      }
+
+      input,
+      select,
+      button {
+        min-height: 44px;
+        font-size: 13px;
+      }
+
+      /* Sign-in / register only: stops iOS from zooming inputs (looks like layout “jump”) */
+      body.gw-auth-screen input,
+      body.gw-auth-screen select,
+      body.gw-auth-screen textarea {
+        font-size: 16px !important;
+      }
+
+      button {
+        width: 100%;
+        margin-right: 0;
+        border-radius: 11px;
+        font-weight: 620;
+      }
+
+      button:not(.secondary) {
+        background: #111111;
+        border: 1px solid #111111;
+        box-shadow: none;
+        color: #fff;
+      }
+
+      .auth-switch button {
+        background: transparent !important;
+        border: none !important;
+        color: var(--accent) !important;
+      }
+
+      [data-theme="dark"] button:not(.secondary) {
+        background: #f3efe6;
+        color: #111111;
+        border: 1px solid #f3efe6;
+      }
+
+      button.secondary {
+        background: transparent;
+        border: 1px solid var(--border);
+        box-shadow: none;
+        color: var(--text);
+      }
+
+      /* Profile sheet: full-width ghost Close stays readable on the card */
+      .profile-modal-scroll button.secondary {
+        background: color-mix(in srgb, var(--card) 88%, var(--border) 12%);
+      }
+
+      [data-theme="dark"] .profile-modal-scroll button.secondary {
+        background: color-mix(in srgb, var(--card) 92%, #ffffff 8%);
+        border-color: var(--border);
+      }
+
+      .wallet-metrics {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .metric {
+        border-radius: 10px;
+        padding: 9px;
+      }
+
+      .metric .label {
+        font-size: 10px;
+      }
+
+      .metric .value {
+        font-size: 14px;
+      }
+
+      .hero-greeting {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .hero-greeting h2 {
+        font-size: 19px;
+      }
+
+      .avatar-ring {
+        width: 52px;
+        height: 52px;
+      }
+
+      .avatar-circle {
+        width: 50px;
+        height: 50px;
+      }
+
+      .activity-list {
+        max-height: none;
+      }
+
+      .activity-actions-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .activity-actions-row button {
+        width: 100% !important;
+      }
+
+      #card_quick_actions {
+        display: none !important;
+      }
+
+      .mobile-quick-bar {
+        position: fixed;
+        left: 14px;
+        right: 14px;
+        bottom: max(10px, env(safe-area-inset-bottom, 0px));
+        z-index: 1300;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 4px;
+        padding: 8px 6px;
+        background: color-mix(in srgb, var(--card) 40%, transparent);
+        border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+        border-top: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border) 82%);
+        border-radius: 22px;
+        backdrop-filter: blur(16px) saturate(1.1);
+        box-shadow: 0 4px 28px rgba(0, 0, 0, 0.08);
+      }
+
+      [data-theme="dark"] .mobile-quick-bar {
+        background: color-mix(in srgb, var(--card) 36%, transparent);
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+      }
+
+      .mobile-quick-bar button,
+      .mobile-quick-bar button.secondary {
+        min-height: 44px;
+        margin: 0;
+        padding: 8px 4px;
+        font-size: 10px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        border-radius: 14px;
+        font-weight: 620;
+        background: transparent !important;
+        color: var(--text);
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      .mobile-quick-bar .tab-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .mobile-quick-bar .tab-icon {
+        width: 18px;
+        height: 18px;
+        display: block;
+        opacity: 0.88;
+      }
+
+      .mobile-quick-bar button.tab-active .tab-icon {
+        opacity: 1;
+      }
+
+      .avatar-modal {
+        max-height: 82vh;
+        overflow: auto;
+        padding-bottom: 14px;
+      }
+
+      .mobile-quick-bar button.tab-active {
+        background: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+        border: none !important;
+      }
+
+      [data-theme="dark"] .mobile-quick-bar button.tab-active {
+        background: color-mix(in srgb, var(--accent) 28%, transparent) !important;
+      }
+
+      /* Logged-in mobile: floating glass header — logo + Sahara stacked */
+      body.app-session-mobile.gw-logged-in .topbar {
+        flex-direction: column;
+        align-items: center;
+        margin-left: -12px;
+        margin-right: -12px;
+        width: calc(100% + 24px);
+        padding: 10px 16px 12px;
+        margin-bottom: 12px;
+        gap: 8px;
+        border-radius: 0;
+        border: none;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 38%, transparent);
+        background: color-mix(in srgb, var(--card) 38%, transparent);
+        backdrop-filter: blur(14px) saturate(1.08);
+        box-shadow: 0 2px 18px rgba(0, 0, 0, 0.04);
+      }
+
+      [data-theme="dark"] body.app-session-mobile.gw-logged-in .topbar {
+        background: color-mix(in srgb, var(--card) 34%, transparent);
+        box-shadow: 0 2px 22px rgba(0, 0, 0, 0.35);
+      }
+
+      body.app-session-mobile .topbar .brand {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        gap: 6px;
+        text-align: center;
+      }
+
+      body.app-session-mobile .topbar .brand > div {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      body.app-session-mobile .topbar .brand .brand-wordmark {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.038em;
+      }
+
+      body.app-session-mobile .topbar .brand .sub {
+        display: block;
+        font-size: 11px;
+        margin-top: 0;
+        max-width: 260px;
+        line-height: 1.3;
+      }
+
+      body.app-session-mobile .topbar .logo-mark {
+        width: 76px;
+        height: 76px;
+        border-radius: 0;
+        background: none;
+        border: none;
+        box-shadow: none;
+        color: var(--text);
+      }
+
+      body.app-session-mobile .topbar .logo-mark svg {
+        width: 62px;
+        height: 62px;
+      }
+    }
+
+    /* Payment methods: saved rows + add-another card */
+    .payment-saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .pm-empty {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 8px 0;
+    }
+
+    .pm-saved-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 94%, var(--primary) 6%);
+    }
+
+    .pm-saved-brand {
+      font-weight: 650;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+    }
+
+    .pm-saved-meta {
+      font-size: 14px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    .pm-add-another-card {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px dashed color-mix(in srgb, var(--border) 70%, var(--muted) 30%);
+      background: transparent;
+      color: var(--accent);
+      font-weight: 620;
+      font-size: 14px;
+      cursor: pointer;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .pm-add-another-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .pm-add-form-wrap {
+      display: block;
+    }
+
+    .pm-add-form-wrap.collapsed {
+      display: none;
+    }
+  </style>
+</head>
+<body class="gw-auth-screen">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="logo-mark" aria-label="Sahara logo">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="8" y="16" width="40" height="26" rx="6" stroke="currentColor" stroke-opacity="0.34" stroke-width="2.75"/>
+            <rect x="18" y="24" width="40" height="26" rx="6" stroke="currentColor" stroke-width="2.75"/>
+          </svg>
+        </span>
+        <div>
+          <h1 class="brand-wordmark">Sahara</h1>
+          <p class="sub">Cross-border wallet</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="token-pill">Token: <span id="token_view">not logged in</span></div>
+      </div>
+    </div>
+
+    <div id="auth_hero" class="auth-hero">
+      <span class="logo-mark" aria-label="Sahara logo">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="8" y="16" width="40" height="26" rx="6" stroke="currentColor" stroke-opacity="0.34" stroke-width="2.75"/>
+          <rect x="18" y="24" width="40" height="26" rx="6" stroke="currentColor" stroke-width="2.75"/>
+        </svg>
+      </span>
+      <h2 class="auth-title brand-wordmark">Sahara</h2>
+      <p class="auth-sub">Cross-border wallet</p>
+      <button id="install_app_btn" class="secondary install-app-btn" type="button" onclick="installApp()">Install Sahara App</button>
+      <div id="install_app_note" class="install-app-note">Install on your phone for app-like access.</div>
+      <p class="auth-support-hint">
+        <button type="button" class="link-support" onclick="openSupportModal()">Contact customer support</button>
+      </p>
+    </div>
+
+    <div id="status_banner" class="status-banner"></div>
+
+    <div class="grid">
+      <div id="card_register" class="card span-12" style="display:none;">
+        <h3>Create Account</h3>
+        <div class="sub">New here? Create your Sahara account to get started.</div>
+        <div class="row">
+          <input id="reg_name" placeholder="Full name">
+          <input id="reg_email" placeholder="Email">
+        </div>
+        <div class="row">
+          <input id="reg_referral" placeholder="Friend's referral code (optional)" autocomplete="off" spellcheck="false">
+          <div class="password-wrap">
+            <input id="reg_pass" placeholder="Password" type="password">
+            <button type="button" class="secondary" onclick="togglePassword('reg_pass', 'reg_pass_toggle')"><span id="reg_pass_toggle">Show</span></button>
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="register()">Register</button>
+        </div>
+        <div class="auth-switch">
+          Already have an account?
+          <button type="button" onclick="showSignInCard()">Sign in</button>
+        </div>
+      </div>
+
+      <div id="card_login" class="card span-12">
+        <h3>Sign In</h3>
+        <div class="sub">Already have an account? Sign in to continue.</div>
+        <div class="row">
+          <input id="log_email" placeholder="Email">
+          <div class="password-wrap">
+            <input id="log_pass" placeholder="Password" type="password">
+            <button type="button" class="secondary" onclick="togglePassword('log_pass', 'log_pass_toggle')"><span id="log_pass_toggle">Show</span></button>
+          </div>
+        </div>
+        <div class="row">
+          <input id="log_otp" placeholder="2FA code (if enabled)" inputmode="numeric">
+        </div>
+        <button onclick="login()">Login</button>
+        <div class="auth-switch">
+          New to Sahara?
+          <button type="button" onclick="showRegisterCard()">Create account</button>
+        </div>
+      </div>
+
+      <div id="card_profile_photo" class="card span-6">
+        <h3>Profile Photo</h3>
+        <div class="sub">Add a clear headshot for your Sahara home screen. This is your in-app avatar (separate from the identity check below).</div>
+        <div class="row">
+          <input id="profile_photo_file" type="file" accept="image/*">
+          <button onclick="uploadProfilePhoto()">Upload Photo</button>
+        </div>
+      </div>
+
+      <div id="card_wallet_ops" class="card span-8">
+        <h3>Wallet Operations</h3>
+
+        <div class="sub">1) Add USD Funds</div>
+        <div class="row-3">
+          <input id="fund_amount" type="number" placeholder="USD amount">
+          <input id="fund_ref" placeholder="Reference">
+          <button onclick="addFunds()">Credit Wallet</button>
+        </div>
+
+        <div class="sub" style="margin-top: 10px;">Demo: Client pays via PayPal to Sahara</div>
+        <div class="row-3">
+          <input id="paypal_demo_amount" type="number" placeholder="Gross USD from client">
+          <input id="paypal_demo_email" placeholder="Client payer email">
+          <input id="paypal_demo_note" placeholder="Payment note">
+        </div>
+        <button class="secondary" onclick="simulatePaypalReceive()">Simulate PayPal Receive</button>
+
+        <div class="sub" style="margin-top: 10px;">Demo: Create PayPal invoice with unique ID</div>
+        <div class="row-3">
+          <input id="paypal_inv_amount" type="number" placeholder="Invoice USD amount">
+          <input id="paypal_inv_client_name" placeholder="Client name">
+          <input id="paypal_inv_client_email" placeholder="Client email">
+        </div>
+        <div class="row">
+          <input id="paypal_inv_note" placeholder="Invoice note (optional)">
+          <button class="secondary" onclick="createPaypalInvoice()">Create Invoice ID</button>
+        </div>
+        <div id="paypal_invoice_last" class="sub" style="margin-top:6px;"></div>
+        <div id="paypal_invoice_list" class="activity-list" style="margin-top:10px;"></div>
+
+        <div class="sub">2) Quote and Convert</div>
+        <div class="row-3">
+          <input id="quote_amount" type="number" placeholder="USD amount for quote">
+          <button onclick="quote()">Get FX Quote</button>
+          <input id="quote_id" type="number" placeholder="Quote ID">
+        </div>
+        <button onclick="convert()">Convert Quote</button>
+
+        <div class="sub" style="margin-top: 14px;">3) Withdraw</div>
+        <div class="row-3">
+          <select id="wd_currency">
+            <option>GHS</option>
+            <option>USD</option>
+          </select>
+          <input id="wd_amount" type="number" placeholder="Amount">
+          <select id="wd_type">
+            <option value="momo">Mobile Money</option>
+            <option value="bank">Bank Account</option>
+          </select>
+        </div>
+        <div class="row">
+          <input id="wd_account" placeholder="Destination account">
+          <button onclick="withdraw()">Withdraw Funds</button>
+        </div>
+
+        <div class="sub" style="margin-top: 14px;">4) Sahara-to-Sahara Transfer</div>
+        <div class="row-3">
+          <input id="s2s_handle" placeholder="Recipient (e.g. kofi@sahara.com)">
+          <input id="s2s_amount" type="number" placeholder="USD amount">
+          <input id="s2s_note" placeholder="Note">
+        </div>
+        <button class="secondary" onclick="transferSahara()">Send to Sahara User</button>
+      </div>
+
+      <div id="card_quick_actions" class="card span-4">
+        <h3>Quick Actions</h3>
+        <button class="secondary" onclick="loadProfile()">Load Profile</button>
+        <button class="secondary" onclick="loadTransactions()">Transactions</button>
+        <button class="secondary" onclick="loadSummary()">Wallet Summary</button>
+        <button class="secondary" onclick="loadMyKyc()">My KYC</button>
+      </div>
+
+      <div id="card_kyc" class="card span-8">
+        <h3>Verify your identity</h3>
+        <div class="sub">
+          Regulated wallets usually confirm both your <strong>ID document</strong> and that <strong>you match the photo</strong> on that document.
+          Upload a live face photo (selfie) plus your passport or national ID image. Our team reviews both before approving your account.
+        </div>
+        <div class="sub" style="margin-top:12px;font-weight:600;">1) Face verification (selfie)</div>
+        <div class="sub">Use good lighting, face the camera, no hat or sunglasses. On phone you can use the front camera.</div>
+        <input id="kyc_face_image_url" type="hidden" value="" />
+        <div class="row">
+          <input id="kyc_face_file" type="file" accept="image/*" capture="user" />
+          <button class="secondary" type="button" onclick="uploadFaceForKyc()">Upload selfie</button>
+        </div>
+        <div class="sub" style="margin-top:14px;font-weight:600;">2) Passport or ID image</div>
+        <div class="row-3">
+          <input id="kyc_passport_number" placeholder="Passport / ID number">
+          <input id="kyc_passport_country" placeholder="Document country">
+          <input id="kyc_residence_country" placeholder="Residence country">
+        </div>
+        <div class="row">
+          <input id="kyc_city" placeholder="Current city">
+          <input id="kyc_passport_image_url" placeholder="Document image URL (auto after upload)">
+        </div>
+        <div class="row">
+          <input id="kyc_passport_file" type="file" accept="image/*" />
+          <button class="secondary" onclick="uploadPassportForKyc()">Upload passport / ID photo</button>
+        </div>
+        <button onclick="submitKyc()">Submit for verification</button>
+      </div>
+
+      <div id="card_greeting" class="card span-12" style="display:none;">
+        <div class="hero-greeting">
+          <div class="greet-left">
+            <span id="greeting_avatar_wrap" class="avatar-ring" style="display:none;" onclick="openAvatarModal()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAvatarModal();}" aria-label="Open profile photo">
+              <img id="greeting_avatar" class="avatar-circle" alt="" />
+            </span>
+            <div>
+              <h2 id="greeting_text">Hello</h2>
+              <p id="greeting_subtext">KYC submitted. We are processing your account.</p>
+            </div>
+          </div>
+          <button class="secondary" type="button" onclick="loadSummary()">Refresh Balance</button>
+        </div>
+      </div>
+
+      <div id="card_wallet_snapshot" class="card span-12">
+        <h3>Wallet Snapshot</h3>
+        <div class="referral-promo" role="note" aria-label="Referral program (demo)">
+          <span class="referral-promo-badge">Referral bonus</span>
+          <p class="referral-promo-text">
+            <strong>Live demo:</strong> share your code from <strong>My Profile</strong>. New users can join with your link (<code style="font-size:12px;">?ref=CODE</code>) or paste your code at signup. When their wallet hits <strong>$100</strong> in qualifying USD inflow (credit wallet, PayPal demo, transfers in), you receive <strong>$20</strong> here.
+          </p>
+        </div>
+        <div class="wallet-metrics">
+          <div class="metric">
+            <div class="label">USD Balance</div>
+            <div class="value" id="usd_balance_view">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">GHS Balance</div>
+            <div class="value" id="ghs_balance_view">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">GHS as USD</div>
+            <div class="value" id="ghs_usd_view">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Total USD Equivalent</div>
+            <div class="value success" id="total_usd_view">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Display Rate USD->GHS</div>
+            <div class="value warning" id="rate_view">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="card_admin_monitoring" class="card span-12">
+        <h3>Admin Monitoring</h3>
+        <div class="sub">Login as admin to monitor users, KYC, money movement, and activity feed.</div>
+        <button class="secondary" onclick="loadAdminStats()">Admin Stats</button>
+        <button class="secondary" onclick="loadAdminUsers()">Admin Users</button>
+        <button class="secondary" onclick="loadAdminKyc()">KYC Queue</button>
+        <button class="secondary" onclick="loadAdminWithdrawals()">Withdrawals</button>
+        <button class="secondary" onclick="loadAdminActivity()">Activity Feed</button>
+        <div class="wallet-metrics" style="margin-top: 12px;">
+          <div class="metric"><div class="label">Total Users</div><div class="value" id="a_total_users">-</div></div>
+          <div class="metric"><div class="label">Pending KYC</div><div class="value warning" id="a_pending_kyc">-</div></div>
+          <div class="metric"><div class="label">Approved KYC</div><div class="value success" id="a_approved_kyc">-</div></div>
+          <div class="metric"><div class="label">Total USD In</div><div class="value" id="a_total_usd_in">-</div></div>
+          <div class="metric"><div class="label">Total Transactions</div><div class="value" id="a_total_txns">-</div></div>
+        </div>
+      </div>
+
+      <div id="card_payment_methods" class="card span-6">
+        <div class="eyebrow">Payments</div>
+        <h3>Payment Methods</h3>
+        <div class="sub">Saved methods show brand and last four digits. Add more anytime.</div>
+        <div id="payment_methods_saved" class="payment-saved-list"></div>
+        <div
+          id="pm_add_trigger"
+          class="pm-add-another-card"
+          role="button"
+          tabindex="0"
+          onclick="togglePmAddForm()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePmAddForm();}"
+        >
+          + Add another payment method
+        </div>
+        <div id="pm_add_form_wrap" class="pm-add-form-wrap">
+          <div class="row">
+            <select id="pm_type" onchange="onPaymentMethodTypeChange()">
+              <option value="card">Card</option>
+              <option value="bank">Bank</option>
+            </select>
+            <input id="pm_provider" placeholder="Provider (Visa, Mastercard, Bank name)">
+          </div>
+          <div class="row">
+            <input id="pm_holder" placeholder="Account holder name">
+            <input id="pm_number" placeholder="Card/Account number">
+          </div>
+          <div id="pm_billing_block">
+            <div class="sub" style="margin-top: 8px;">Billing details (required for cards)</div>
+            <div class="row">
+              <input id="pm_billing_address" placeholder="Billing address">
+              <input id="pm_billing_city" placeholder="Billing city">
+            </div>
+            <div class="row">
+              <input id="pm_billing_country" placeholder="Billing country">
+              <input id="pm_billing_postal" placeholder="Postal / ZIP code">
+            </div>
+          </div>
+          <input id="card_scan_file" type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleCardScanSelected()" />
+          <button type="button" class="secondary" onclick="scanCardFromCamera()">Scan Card</button>
+          <button type="button" onclick="addPaymentMethod()">Add Payment Method</button>
+        </div>
+      </div>
+
+      <div id="card_activity" class="card span-6">
+        <div class="eyebrow">Timeline</div>
+        <h3>Recent Activity</h3>
+        <div class="sub">Professional activity updates in plain English.</div>
+        <div id="activity_list" class="activity-list" style="margin-top:10px;"></div>
+        <div class="activity-actions-row">
+          <button id="activity_more_btn" class="secondary" type="button" onclick="toggleActivityView()" style="display:none;">Show more</button>
+          <button id="activity_pdf_btn" class="secondary" type="button" onclick="downloadActivityPdf()" style="display:none;">Download PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mobile_quick_bar" class="mobile-quick-bar" style="display:none;">
+    <button id="mobile_tab_home" class="secondary" type="button" onclick="setMobileTab('home')">
+      <span class="tab-inner">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Home</span>
+      </span>
+    </button>
+    <button id="mobile_tab_activity" class="secondary" type="button" onclick="setMobileTab('activity')">
+      <span class="tab-inner">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M7 14l2.2-2.2 2.2 2.2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="7" cy="14" r="1" fill="currentColor"/>
+          <circle cx="11.4" cy="14" r="1" fill="currentColor"/>
+          <circle cx="15.4" cy="10" r="1" fill="currentColor"/>
+        </svg>
+        <span>Activities</span>
+      </span>
+    </button>
+    <button id="mobile_tab_payments" class="secondary" type="button" onclick="setMobileTab('payments')">
+      <span class="tab-inner">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M7 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>Payments</span>
+      </span>
+    </button>
+  </div>
+
+  <div id="avatar_modal_backdrop" class="avatar-modal-backdrop" onclick="closeAvatarModal(event)">
+    <div class="avatar-modal" onclick="event.stopPropagation()">
+      <h3 style="margin:0 0 6px;">Profile Photo</h3>
+      <div class="avatar-preview-stack">
+        <div class="avatar-preview-wrap">
+          <img id="avatar_modal_img" class="avatar-preview-large" alt="Profile preview" />
+          <div class="avatar-photo-icon-row" aria-hidden="false">
+            <button type="button" class="avatar-icon-btn" onclick="viewAvatarFull()" title="View full size" aria-label="View full size">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+            <button type="button" class="avatar-icon-btn" onclick="replaceAvatar()" title="Change photo" aria-label="Change photo">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="avatar-actions-compact">
+        <button type="button" class="secondary" onclick="openProfileModal()">My Profile</button>
+        <button type="button" class="secondary" onclick="openSupportModal(); closeAvatarModal();">Contact support</button>
+        <button type="button" onclick="closeAvatarModal()">Close</button>
+      </div>
+      <input id="avatar_replace_file" type="file" accept="image/*" style="display:none;" onchange="handleAvatarReplaceSelected()" />
+    </div>
+  </div>
+
+  <div id="profile_modal_backdrop" class="avatar-modal-backdrop" onclick="closeProfileModal(event)">
+    <div class="avatar-modal profile-modal-sheet">
+      <div class="profile-modal-scroll">
+        <h3 style="margin:0 0 10px;">My Profile</h3>
+        <div class="profile-modal-field">
+          <div class="k">Full name</div>
+          <div class="v" id="profile_modal_name">-</div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Email</div>
+          <div class="v" id="profile_modal_email">-</div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">KYC status</div>
+          <div class="v" id="profile_modal_kyc">-</div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Your unique Sahara ID</div>
+          <div class="v" id="profile_modal_public_id">-</div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Your Sahara pay address</div>
+          <div class="v" id="profile_modal_pay_handle">-</div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Referral (demo)</div>
+          <div id="profile_referral_panel" class="referral-demo-box">
+            <p class="sub">Open after sign-in.</p>
+          </div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Change alias (optional, 3-16 chars)</div>
+          <input id="profile_modal_alias" placeholder="e.g. kofi-design" />
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Two-factor authentication (2FA)</div>
+          <div class="sub" id="profile_modal_2fa_status" style="margin:2px 0 8px;">Loading...</div>
+          <input id="profile_modal_2fa_code" placeholder="Set or enter 6-digit 2FA code" inputmode="numeric" />
+        </div>
+        <div class="avatar-actions">
+          <button type="button" class="secondary" onclick="savePublicIdAlias()">Save ID Alias</button>
+          <button type="button" class="secondary" onclick="enableTwoFactor()">Enable 2FA</button>
+          <button type="button" class="secondary" onclick="disableTwoFactor()">Disable 2FA</button>
+        </div>
+        <div class="profile-modal-divider"></div>
+        <div class="profile-modal-settings profile-modal-field">
+          <div class="k">Appearance</div>
+          <button id="profile_theme_btn" type="button" class="secondary" style="width:100%;" onclick="toggleTheme()">Dark mode</button>
+        </div>
+        <a id="profile_admin_link" href="/admin-panel" style="display:none; text-decoration:none;">
+          <button type="button" class="secondary" style="width:100%; margin-top:8px;">Open Admin Panel</button>
+        </a>
+        <div class="profile-modal-divider"></div>
+        <div class="profile-modal-field">
+          <div class="k">About</div>
+          <div class="profile-modal-explainer">
+            <div class="eyebrow">How Sahara earns</div>
+            <div class="profile-modal-explainer-title">Exchange and Processing Revenue</div>
+            <p class="sub">
+              We earn mainly from FX spread when converting USD to GHS, plus small payout/processing fees.
+              If users route PayPal earnings through Sahara, we can also charge a clear commission per payout.
+            </p>
+            <p class="sub profile-modal-referral-note">
+              <strong>Referral bonus (demo):</strong> earn <strong>$20</strong> when your invite reaches <strong>$100</strong> in qualifying USD inflow — see <strong>Referral</strong> above for your code and progress.
+            </p>
+          </div>
+        </div>
+        <div class="profile-modal-field">
+          <div class="k">Support</div>
+          <button type="button" style="width:100%; margin-top:4px;" onclick="openSupportModal()">Contact customer support</button>
+        </div>
+        <button id="profile_logout_btn" type="button" style="width:100%; margin-top:12px;" onclick="logout(); closeProfileModal();">Log out</button>
+        <button type="button" class="secondary" style="width:100%; margin-top:10px;" onclick="closeProfileModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tx_confirm_backdrop" class="tx-confirm-backdrop" onclick="closeTxConfirm(event)">
+    <div class="tx-confirm-modal">
+      <h4 class="tx-confirm-title">Confirm Transaction</h4>
+      <p id="tx_confirm_text" class="tx-confirm-text">Please review and confirm your transaction.</p>
+      <div class="tx-confirm-actions">
+        <button type="button" class="secondary" onclick="resolveTxConfirm(false)">Cancel</button>
+        <button type="button" onclick="resolveTxConfirm(true)">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="install_help_backdrop" class="install-help-backdrop" onclick="closeInstallHelp(event)">
+    <div class="install-help-modal">
+      <h4>Install Sahara App</h4>
+      <p id="install_help_text">Follow your browser steps to install Sahara on this phone.</p>
+      <div class="tx-confirm-actions">
+        <button type="button" onclick="closeInstallHelp()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="support_modal_backdrop" class="support-modal-backdrop" onclick="closeSupportModal(event)">
+    <div class="support-modal">
+      <h4>Customer support</h4>
+      <p class="sub">Questions about your account, transfers, KYC, or payouts? Reach our team (demo — swap for real channels before launch).</p>
+      <a class="support-email" href="mailto:support@sahara.com">support@sahara.com</a>
+      <p class="sub">Tip: include your Sahara ID from My Profile so we can find you faster.</p>
+      <div class="tx-confirm-actions" style="margin-top:12px;">
+        <button type="button" onclick="closeSupportModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+  <script>
+    let token = "";
+    let theme = "light";
+    let currentUserProfile = null;
+    let activityExpanded = false;
+    let activityCache = [];
+    let currentMobileTab = "home";
+    let txConfirmResolver = null;
+    let deferredInstallPrompt = null;
+
+    function applyTheme(nextTheme) {
+      theme = nextTheme;
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("gw_theme", theme);
+      const profileTheme = document.getElementById("profile_theme_btn");
+      if (profileTheme) {
+        profileTheme.textContent = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+      }
+    }
+
+    function toggleTheme() {
+      applyTheme(theme === "dark" ? "light" : "dark");
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem("gw_theme");
+      if (saved === "dark" || saved === "light") {
+        applyTheme(saved);
+        return;
+      }
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(prefersDark ? "dark" : "light");
+    }
+
+    window.addEventListener("resize", () => {
+      applyAuthView();
+    });
+
+    function setOut(data) {
+      const banner = document.getElementById("status_banner");
+      if (!banner) return;
+      if (data === undefined || data === null) {
+        banner.style.display = "none";
+        return;
+      }
+      let message = null;
+      if (typeof data === "string") {
+        message = data;
+      } else if (data && typeof data === "object") {
+        if (data.message) {
+          message = data.message;
+        } else if (data.detail !== undefined && data.detail !== null) {
+          const d = data.detail;
+          if (typeof d === "string") {
+            message = d;
+          } else if (Array.isArray(d) && d.length) {
+            message = d
+              .map((x) => (x && typeof x === "object" && x.msg ? x.msg : String(x)))
+              .join(" ");
+          } else {
+            message = "Something needs your attention.";
+          }
+        }
+      }
+      if (!message) {
+        banner.style.display = "none";
+        return;
+      }
+      banner.textContent = message;
+      banner.style.display = "block";
+    }
+
+    function togglePassword(inputId, labelId) {
+      const input = document.getElementById(inputId);
+      const label = document.getElementById(labelId);
+      if (!input) return;
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      if (label) label.textContent = showing ? "Show" : "Hide";
+    }
+
+    function updateInstallButtonVisibility() {
+      const btn = document.getElementById("install_app_btn");
+      const note = document.getElementById("install_app_note");
+      if (!btn || !note) return;
+      if (!!token) {
+        btn.style.display = "none";
+        note.style.display = "none";
+        return;
+      }
+      btn.style.display = "inline-block";
+      note.style.display = "block";
+      btn.textContent = deferredInstallPrompt ? "Install Sahara App" : "Install Instructions";
+    }
+
+    async function installApp() {
+      try {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          await deferredInstallPrompt.userChoice;
+          deferredInstallPrompt = null;
+          updateInstallButtonVisibility();
+          return;
+        }
+        const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+        if (isiOS) {
+          openInstallHelp("On iPhone: tap Share, then 'Add to Home Screen'.");
+          return;
+        }
+        openInstallHelp("On Android: open browser menu and tap 'Install app' or 'Add to Home screen'.");
+      } catch (e) {
+        openInstallHelp("Install prompt unavailable right now. Use your browser menu and select 'Install app' or 'Add to Home screen'.");
+      }
+    }
+
+    function openInstallHelp(message) {
+      const text = document.getElementById("install_help_text");
+      const backdrop = document.getElementById("install_help_backdrop");
+      if (text) text.textContent = message || "Follow browser steps to install.";
+      if (backdrop) backdrop.style.display = "flex";
+    }
+
+    function closeInstallHelp(evt = null) {
+      const backdrop = document.getElementById("install_help_backdrop");
+      if (evt && evt.target && evt.target.id !== "install_help_backdrop") return;
+      if (backdrop) backdrop.style.display = "none";
+    }
+
+    function openSupportModal() {
+      const backdrop = document.getElementById("support_modal_backdrop");
+      if (backdrop) backdrop.style.display = "flex";
+    }
+
+    function closeSupportModal(evt = null) {
+      const backdrop = document.getElementById("support_modal_backdrop");
+      if (evt && evt.target && evt.target.id !== "support_modal_backdrop") return;
+      if (backdrop) backdrop.style.display = "none";
+    }
+
+    function setToken(nextToken) {
+      token = nextToken || "";
+      if (token) {
+        localStorage.setItem("gw_token", token);
+      } else {
+        localStorage.removeItem("gw_token");
+      }
+      document.getElementById("token_view").textContent = token ? token.slice(0, 20) + "..." : "not logged in";
+      applyAuthView();
+      updateInstallButtonVisibility();
+    }
+
+    async function restoreSession() {
+      const savedToken = localStorage.getItem("gw_token");
+      if (!savedToken) {
+        setToken("");
+        return;
+      }
+      setToken(savedToken);
+      try {
+        await loadProfile();
+        await loadSummary();
+        await loadPaymentMethods();
+        await loadActivity();
+      } catch (e) {
+        // If token is stale/invalid, force clean login state.
+        setToken("");
+      }
+    }
+
+    function renderSummary(summary) {
+      if (!summary) return;
+      const usd = Number(summary.usd_balance ?? 0);
+      const ghs = Number(summary.ghs_balance ?? 0);
+      const ghsUsd = Number(summary.ghs_usd_equivalent ?? 0);
+      const totalUsd = Number(summary.total_usd_equivalent ?? 0);
+      const rate = Number(summary.display_rate_usd_to_ghs ?? 0);
+
+      const fmtUsd = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+      });
+      const fmtGhs = new Intl.NumberFormat("en-GH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const fmtRate = new Intl.NumberFormat("en-GH", {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      });
+
+      document.getElementById("usd_balance_view").textContent = fmtUsd.format(usd);
+      document.getElementById("ghs_balance_view").textContent = `GH₵ ${fmtGhs.format(ghs)}`;
+      document.getElementById("ghs_usd_view").textContent = fmtUsd.format(ghsUsd);
+      document.getElementById("total_usd_view").textContent = fmtUsd.format(totalUsd);
+      document.getElementById("rate_view").textContent = `1 USD = GH₵ ${fmtRate.format(rate)}`;
+    }
+
+    function openAvatarModal() {
+      const avatar = document.getElementById("greeting_avatar");
+      if (!avatar || !avatar.getAttribute("src")) return;
+      const modalImg = document.getElementById("avatar_modal_img");
+      const backdrop = document.getElementById("avatar_modal_backdrop");
+      if (modalImg) modalImg.src = avatar.src;
+      if (backdrop) backdrop.style.display = "flex";
+    }
+
+    function closeAvatarModal(evt = null) {
+      const backdrop = document.getElementById("avatar_modal_backdrop");
+      if (evt && evt.target && evt.target.id !== "avatar_modal_backdrop") return;
+      if (backdrop) backdrop.style.display = "none";
+    }
+
+    function viewAvatarFull() {
+      const modalImg = document.getElementById("avatar_modal_img");
+      if (modalImg && modalImg.src) window.open(modalImg.src, "_blank");
+    }
+
+    function replaceAvatar() {
+      const input = document.getElementById("avatar_replace_file");
+      if (input) input.click();
+    }
+
+    async function openProfileModal() {
+      if (!currentUserProfile) {
+        try {
+          await loadProfile();
+        } catch (_) {
+          // Continue with whatever data is available.
+        }
+      }
+
+      document.getElementById("profile_modal_name").textContent = currentUserProfile?.full_name || "-";
+      document.getElementById("profile_modal_email").textContent = currentUserProfile?.email || "-";
+      document.getElementById("profile_modal_kyc").textContent = currentUserProfile?.kyc_status || "-";
+      document.getElementById("profile_modal_public_id").textContent = currentUserProfile?.public_id || "-";
+      document.getElementById("profile_modal_pay_handle").textContent = currentUserProfile?.pay_handle || "-";
+      document.getElementById("profile_modal_alias").value = "";
+      const backdrop = document.getElementById("profile_modal_backdrop");
+      if (backdrop) backdrop.style.display = "flex";
+
+      try {
+        const data = await call("/me/public-id");
+        document.getElementById("profile_modal_public_id").textContent = data.public_id || currentUserProfile?.public_id || "-";
+        document.getElementById("profile_modal_pay_handle").textContent = data.pay_handle || currentUserProfile?.pay_handle || "-";
+        document.getElementById("profile_modal_alias").value = data.alias || "";
+      } catch (e) {
+        /* Public ID sync failed — modal still usable with cached profile. */
+      }
+      try {
+        const sec = await call("/me/security");
+        const el = document.getElementById("profile_modal_2fa_status");
+        if (el) el.textContent = sec.two_factor_enabled ? "2FA is enabled." : "2FA is disabled.";
+      } catch (_) {}
+      await loadReferralPanel();
+    }
+
+    function copyTextToClipboard(text) {
+      if (!text) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    }
+
+    async function loadReferralPanel() {
+      const el = document.getElementById("profile_referral_panel");
+      if (!el) return;
+      if (!token) {
+        el.innerHTML = '<p class="sub">Sign in to see your referral code.</p>';
+        return;
+      }
+      el.innerHTML = '<p class="sub">Loading…</p>';
+      try {
+        const r = await call("/me/referral");
+        const code = r.my_referral_code || "—";
+        const path = window.location.pathname || "/";
+        const link = `${window.location.origin}${path}?ref=${encodeURIComponent(code)}`;
+        let html = `<p class="sub" style="margin-top:0;">Share your code or link. When a friend signs up and reaches <strong>$${r.threshold_usd}</strong> in qualifying USD inflow, you get <strong>$${r.bonus_usd}</strong> (demo).</p>`;
+        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;">`;
+        html += `<code style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:color-mix(in srgb,var(--card)90%,var(--muted)10%);">${code}</code>`;
+        html += `<button type="button" class="secondary" onclick="copyTextToClipboard(${JSON.stringify(code)})">Copy code</button>`;
+        html += `<button type="button" class="secondary" onclick="copyTextToClipboard(${JSON.stringify(link)})">Copy link</button>`;
+        html += `</div>`;
+        const ref = r.as_referee;
+        if (ref) {
+          html += `<p class="sub" style="margin-top:10px;">You joined with a referral: your qualifying activity is <strong>$${Number(ref.volume_usd).toFixed(2)}</strong> / $${ref.threshold_usd} USD. Referrer bonus ${ref.bonus_paid_to_referrer ? "paid." : "unlocks when you reach the threshold."}</p>`;
+        }
+        const refR = r.as_referrer;
+        if (refR) {
+          html += `<p class="sub" style="margin-top:8px;">As referrer: <strong>$${Number(refR.total_bonus_usd).toFixed(2)}</strong> earned · ${refR.pending_referees} invite(s) still in progress.</p>`;
+        }
+        el.innerHTML = html;
+      } catch (_) {
+        el.innerHTML = '<p class="sub">Referral data unavailable.</p>';
+      }
+    }
+
+    function closeProfileModal(evt = null) {
+      const backdrop = document.getElementById("profile_modal_backdrop");
+      if (evt && evt.target && evt.target.id !== "profile_modal_backdrop") return;
+      if (backdrop) backdrop.style.display = "none";
+    }
+
+    async function savePublicIdAlias() {
+      try {
+        const alias = (document.getElementById("profile_modal_alias").value || "").trim();
+        if (!alias) {
+          throw { detail: "Please enter an alias first." };
+        }
+        const params = new URLSearchParams({ alias });
+        const data = await call(`/me/public-id?${params.toString()}`, "PATCH");
+        document.getElementById("profile_modal_public_id").textContent = data.public_id;
+        document.getElementById("profile_modal_pay_handle").textContent = data.pay_handle || "-";
+        if (currentUserProfile) {
+          currentUserProfile.public_id = data.public_id;
+          currentUserProfile.pay_handle = data.pay_handle;
+        }
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function enableTwoFactor() {
+      try {
+        const code = (document.getElementById("profile_modal_2fa_code").value || "").trim();
+        if (!/^\d{6}$/.test(code)) {
+          throw { detail: "Enter a valid 6-digit code for 2FA." };
+        }
+        const params = new URLSearchParams({ otp_code: code });
+        const data = await call(`/me/security/2fa/enable?${params.toString()}`, "POST");
+        const el = document.getElementById("profile_modal_2fa_status");
+        if (el) el.textContent = "2FA is enabled.";
+      } catch (e) { setOut(e); }
+    }
+
+    async function disableTwoFactor() {
+      try {
+        const code = (document.getElementById("profile_modal_2fa_code").value || "").trim();
+        if (!/^\d{6}$/.test(code)) {
+          throw { detail: "Enter your current 6-digit 2FA code to disable." };
+        }
+        const params = new URLSearchParams({ otp_code: code });
+        const data = await call(`/me/security/2fa/disable?${params.toString()}`, "POST");
+        const el = document.getElementById("profile_modal_2fa_status");
+        if (el) el.textContent = "2FA is disabled.";
+      } catch (e) { setOut(e); }
+    }
+
+    async function handleAvatarReplaceSelected() {
+      try {
+        await uploadWithForm("/me/photo", "avatar_replace_file");
+        await loadProfile();
+        closeAvatarModal();
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    function firstNameFromFullName(fullName) {
+      if (!fullName) return "there";
+      return String(fullName).trim().split(/\s+/)[0] || "there";
+    }
+
+    function getTimeGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return "Good morning";
+      if (hour < 18) return "Good afternoon";
+      return "Good evening";
+    }
+
+    function isPostKycUser(profile) {
+      return !!profile && ["pending_review", "approved", "verified"].includes(profile.kyc_status);
+    }
+
+    function setMobileTab(tab) {
+      currentMobileTab = tab || "home";
+      if (currentMobileTab === "activity") {
+        loadActivity();
+      } else if (currentMobileTab === "payments") {
+        loadPaymentMethods();
+      }
+      applyMobileTabView();
+    }
+
+    function applyMobileTabView() {
+      const isPhone = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+      const hasToken = !!token;
+      const nav = document.getElementById("mobile_quick_bar");
+      const isPostKyc = isPostKycUser(currentUserProfile);
+
+      if (!isPhone || !hasToken || !isPostKyc) {
+        if (nav) nav.style.display = "none";
+        return;
+      }
+
+      if (nav) nav.style.display = "grid";
+
+      const tabs = {
+        home: document.getElementById("mobile_tab_home"),
+        activity: document.getElementById("mobile_tab_activity"),
+        payments: document.getElementById("mobile_tab_payments"),
+      };
+
+      Object.entries(tabs).forEach(([key, btn]) => {
+        if (!btn) return;
+        btn.classList.add("secondary");
+        btn.classList.toggle("tab-active", currentMobileTab === key);
+      });
+
+      const homeCards = [
+        "card_greeting",
+        "card_wallet_snapshot",
+        "card_wallet_ops",
+      ];
+      const activityCards = ["card_activity"];
+      const paymentCards = ["card_payment_methods"];
+
+      const allMobileManagedCards = [...homeCards, ...activityCards, ...paymentCards];
+      allMobileManagedCards.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      });
+
+      if (currentMobileTab === "activity") {
+        activityCards.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "block";
+        });
+      } else if (currentMobileTab === "payments") {
+        paymentCards.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "block";
+        });
+      } else {
+        homeCards.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "block";
+        });
+      }
+    }
+
+    function applyPostKycMinimalView(profile) {
+      const isPostKyc = isPostKycUser(profile);
+      const hasCompletedSetup = !!profile && !!profile.profile_photo_url && isPostKyc;
+      const showIds = ["card_greeting", "card_wallet_ops", "card_quick_actions", "card_wallet_snapshot", "card_payment_methods", "card_activity"];
+      const hideIds = [
+        "card_kyc"
+      ];
+      showIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = "block";
+      });
+      hideIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = isPostKyc ? "none" : "block";
+      });
+
+      const greetingEl = document.getElementById("greeting_text");
+      if (greetingEl && hasCompletedSetup) {
+        greetingEl.textContent = `${getTimeGreeting()}, ${firstNameFromFullName(profile.full_name)}`;
+      }
+      const greetingSub = document.getElementById("greeting_subtext");
+      if (greetingSub && hasCompletedSetup) {
+        greetingSub.textContent = profile.kyc_status === "approved"
+          ? "Your account is verified. You can use all wallet actions."
+          : "Your KYC is pending review. You can still monitor and use your wallet.";
+      }
+      const avatar = document.getElementById("greeting_avatar");
+      const avatarWrap = document.getElementById("greeting_avatar_wrap");
+      if (avatar && avatarWrap) {
+        if (profile && profile.profile_photo_url) {
+          avatar.src = profile.profile_photo_url;
+          avatar.removeAttribute("aria-hidden");
+          avatarWrap.style.display = "inline-flex";
+        } else {
+          avatarWrap.style.display = "none";
+        }
+      }
+      const greetingCard = document.getElementById("card_greeting");
+      if (greetingCard) {
+        greetingCard.style.display = hasCompletedSetup ? "block" : "none";
+      }
+
+      // Admin card visibility is controlled only by applyAuthView().
+      applyAuthView();
+
+      // Once KYC is submitted/approved, do not keep asking for profile upload.
+      const profileCard = document.getElementById("card_profile_photo");
+      if (profileCard && hasCompletedSetup) {
+        profileCard.style.display = "none";
+      }
+
+      // For post-KYC users: Greeting at top, then balances, then transaction controls.
+      const grid = document.querySelector(".grid");
+      const profilePhoto = document.getElementById("card_profile_photo");
+      const kycCard = document.getElementById("card_kyc");
+      const walletSnapshot = document.getElementById("card_wallet_snapshot");
+      const walletOps = document.getElementById("card_wallet_ops");
+      const quickActions = document.getElementById("card_quick_actions");
+      const paymentCard = document.getElementById("card_payment_methods");
+      const activityCard = document.getElementById("card_activity");
+      if (grid && hasCompletedSetup && greetingCard && walletSnapshot && walletOps && quickActions && paymentCard && activityCard) {
+        grid.appendChild(greetingCard);
+        grid.appendChild(walletSnapshot);
+        grid.appendChild(walletOps);
+        grid.appendChild(quickActions);
+        grid.appendChild(paymentCard);
+        grid.appendChild(activityCard);
+      } else if (grid && !hasCompletedSetup && profilePhoto && walletOps && quickActions && kycCard && walletSnapshot) {
+        // Restore normal onboarding layout for users who are not yet in post-KYC state.
+        grid.appendChild(profilePhoto);
+        grid.appendChild(walletOps);
+        grid.appendChild(quickActions);
+        grid.appendChild(kycCard);
+        grid.appendChild(walletSnapshot);
+        if (paymentCard) grid.appendChild(paymentCard);
+        if (activityCard) grid.appendChild(activityCard);
+      }
+    }
+
+    function applyAuthView() {
+      const hasToken = !!token;
+      const isPhone = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+      const isPostKyc = isPostKycUser(currentUserProfile);
+      const hasProfilePhoto = !!(currentUserProfile && currentUserProfile.profile_photo_url);
+      const reg = document.getElementById("card_register");
+      const login = document.getElementById("card_login");
+      const authHero = document.getElementById("auth_hero");
+      const topbar = document.querySelector(".topbar");
+      const topbarBrand = document.querySelector(".topbar .brand");
+      const registerMode = !!reg && reg.dataset.authMode === "show";
+      if (reg) reg.style.display = hasToken ? "none" : (registerMode ? "block" : "none");
+      if (login) login.style.display = hasToken ? "none" : (registerMode ? "none" : "block");
+      if (authHero) authHero.style.display = hasToken ? "none" : "block";
+      if (topbar) topbar.style.display = hasToken ? "flex" : "none";
+      if (topbarBrand) topbarBrand.style.display = hasToken ? "flex" : "none";
+      document.body.classList.toggle("app-session-mobile", !!(hasToken && isPhone));
+      document.body.classList.toggle("gw-logged-in", !!hasToken);
+      document.body.classList.toggle("gw-auth-screen", !hasToken);
+      const isAdminUser = !!(currentUserProfile && currentUserProfile.is_admin);
+      const profileAdminLink = document.getElementById("profile_admin_link");
+      if (profileAdminLink) {
+        profileAdminLink.style.display = hasToken && isAdminUser ? "block" : "none";
+      }
+      const mobileQuickBar = document.getElementById("mobile_quick_bar");
+      if (mobileQuickBar) mobileQuickBar.style.display = "none";
+
+      const gatedCards = [
+        "card_profile_photo",
+        "card_wallet_ops",
+        "card_quick_actions",
+        "card_wallet_snapshot",
+        "card_greeting",
+        "card_payment_methods",
+        "card_activity",
+      ];
+      gatedCards.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = hasToken ? "block" : "none";
+      });
+
+      const profileCard = document.getElementById("card_profile_photo");
+      if (profileCard && hasToken && isPostKyc && hasProfilePhoto) {
+        profileCard.style.display = "none";
+      }
+
+      const adminCard = document.getElementById("card_admin_monitoring");
+      if (adminCard) {
+        adminCard.style.display = hasToken && isAdminUser ? "block" : "none";
+      }
+
+      // KYC form should never show before login.
+      const kycCard = document.getElementById("card_kyc");
+      if (kycCard && !hasToken) {
+        kycCard.style.display = "none";
+      }
+
+      applyMobileTabView();
+      updateInstallButtonVisibility();
+    }
+
+    function logout() {
+      setToken("");
+      currentUserProfile = null;
+      showSignInCard();
+      const banner = document.getElementById("status_banner");
+      if (banner) banner.style.display = "none";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showRegisterCard() {
+      const reg = document.getElementById("card_register");
+      if (reg) reg.dataset.authMode = "show";
+      const rr = document.getElementById("reg_referral");
+      if (rr) {
+        const stored = sessionStorage.getItem("gw_referral_code");
+        if (stored && !String(rr.value || "").trim()) rr.value = stored;
+      }
+      applyAuthView();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showSignInCard() {
+      const reg = document.getElementById("card_register");
+      if (reg) reg.dataset.authMode = "hide";
+      applyAuthView();
+    }
+
+    function renderAdminStats(stats) {
+      if (!stats) return;
+      document.getElementById("a_total_users").textContent = stats.total_users ?? "-";
+      document.getElementById("a_pending_kyc").textContent = stats.pending_kyc ?? "-";
+      document.getElementById("a_approved_kyc").textContent = stats.approved_kyc ?? "-";
+      document.getElementById("a_total_usd_in").textContent = stats.total_usd_in ?? "-";
+      document.getElementById("a_total_txns").textContent = stats.total_transactions ?? "-";
+    }
+
+    async function call(path, method = "GET", body = null) {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      return data;
+    }
+
+    async function register() {
+      try {
+        const body = {
+          full_name: document.getElementById("reg_name").value,
+          email: document.getElementById("reg_email").value,
+          password: document.getElementById("reg_pass").value,
+        };
+        const rc = (document.getElementById("reg_referral") && document.getElementById("reg_referral").value || "").trim()
+          || (sessionStorage.getItem("gw_referral_code") || "").trim();
+        if (rc) body.referral_code = rc;
+        const data = await call("/auth/register", "POST", body);
+        try {
+          sessionStorage.removeItem("gw_referral_code");
+        } catch (_) {}
+        setToken(data.access_token);
+        await loadProfile();
+        await loadSummary();
+        await loadPaymentMethods();
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function login() {
+      try {
+        const data = await call("/auth/login", "POST", {
+          email: document.getElementById("log_email").value,
+          password: document.getElementById("log_pass").value,
+          otp: document.getElementById("log_otp").value
+        });
+        setToken(data.access_token);
+        await loadProfile();
+        await loadSummary();
+        await loadPaymentMethods();
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function addFunds() {
+      try {
+        const data = await call("/wallet/add-funds", "POST", {
+          amount_usd: Number(document.getElementById("fund_amount").value),
+          reference: document.getElementById("fund_ref").value || "manual-test"
+        });
+        await loadSummary();
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function simulatePaypalReceive() {
+      try {
+        const amount = Number(document.getElementById("paypal_demo_amount").value);
+        const payerEmail = document.getElementById("paypal_demo_email").value || "";
+        const note = document.getElementById("paypal_demo_note").value || "";
+        const params = new URLSearchParams({
+          amount_usd: String(amount),
+          payer_email: payerEmail,
+          note: note,
+        });
+        const data = await call(`/demo/paypal/receive?${params.toString()}`, "POST");
+        if (data.wallet_summary) renderSummary(data.wallet_summary);
+        setOut({
+          message: `PayPal demo success: gross $${data.gross_amount_usd}, commission $${data.paypal_commission_usd}, net credited $${data.net_credited_usd}.`,
+        });
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function createPaypalInvoice() {
+      try {
+        const amount = Number(document.getElementById("paypal_inv_amount").value);
+        const clientName = document.getElementById("paypal_inv_client_name").value || "";
+        const clientEmail = document.getElementById("paypal_inv_client_email").value || "";
+        const note = document.getElementById("paypal_inv_note").value || "";
+        const params = new URLSearchParams({
+          amount_usd: String(amount),
+          client_name: clientName,
+          client_email: clientEmail,
+          note: note,
+        });
+        const data = await call(`/demo/paypal/invoices?${params.toString()}`, "POST");
+        const root = document.getElementById("paypal_invoice_last");
+        if (root && data && data.invoice) {
+          root.textContent = `Invoice ID: ${data.invoice.invoice_code} (share this with client).`;
+        }
+        setOut({ message: `Invoice ${data.invoice.invoice_code} created.` });
+        await loadPaypalInvoices();
+      } catch (e) { setOut(e); }
+    }
+
+    async function markPaypalInvoicePaid(invoiceCode) {
+      try {
+        if (!invoiceCode) return;
+        const data = await call(`/demo/paypal/invoices/${encodeURIComponent(invoiceCode)}/pay`, "POST");
+        if (data.wallet_summary) renderSummary(data.wallet_summary);
+        setOut({
+          message: `Invoice ${data.invoice_code} paid. Gross $${data.gross_amount_usd}, commission $${data.paypal_commission_usd}, net credited $${data.net_credited_usd}.`,
+        });
+        await loadPaypalInvoices();
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    function renderPaypalInvoices(rows) {
+      const root = document.getElementById("paypal_invoice_list");
+      if (!root) return;
+      if (!rows || !rows.length) {
+        root.innerHTML = `<div class="activity-item"><div>No PayPal invoices yet.</div></div>`;
+        return;
+      }
+      root.innerHTML = rows.map((r) => `
+        <div class="activity-item">
+          <div><b>${r.invoice_code}</b> - $${Number(r.amount_usd).toFixed(2)} (${r.status})</div>
+          <div class="time">${r.client_name} • ${r.client_email}</div>
+          <div class="time">${r.note || "No note"}</div>
+          ${r.status === "pending"
+            ? `<button class="secondary" type="button" onclick="markPaypalInvoicePaid('${r.invoice_code}')">Mark Paid (Demo)</button>`
+            : `<div class="time">Paid at: ${new Date(r.paid_at || r.created_at).toLocaleString()}</div>`
+          }
+        </div>
+      `).join("");
+    }
+
+    async function loadPaypalInvoices() {
+      try {
+        const rows = await call("/demo/paypal/invoices");
+        renderPaypalInvoices(rows);
+      } catch (_) {
+        // Keep silent to avoid noisy banner during initial loading.
+      }
+    }
+
+    async function quote() {
+      try {
+        const data = await call("/fx/quote", "POST", {
+          amount_usd: Number(document.getElementById("quote_amount").value)
+        });
+        document.getElementById("quote_id").value = data.quote_id;
+      } catch (e) { setOut(e); }
+    }
+
+    async function convert() {
+      try {
+        const data = await call("/fx/convert", "POST", {
+          quote_id: Number(document.getElementById("quote_id").value)
+        });
+        if (data.wallet_summary) renderSummary(data.wallet_summary);
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function withdraw() {
+      try {
+        const data = await call("/withdrawals", "POST", {
+          currency: document.getElementById("wd_currency").value,
+          amount: Number(document.getElementById("wd_amount").value),
+          destination_type: document.getElementById("wd_type").value,
+          destination_account: document.getElementById("wd_account").value
+        });
+        if (data.wallet_summary) renderSummary(data.wallet_summary);
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function transferSahara() {
+      try {
+        const toPayHandle = document.getElementById("s2s_handle").value || "";
+        const amountUsd = Number(document.getElementById("s2s_amount").value);
+        const note = document.getElementById("s2s_note").value || "";
+        const verifyParams = new URLSearchParams({ to_pay_handle: toPayHandle });
+        const verified = await call(`/transfers/sahara/verify?${verifyParams.toString()}`);
+        const fullName = [verified.recipient_first_name, verified.recipient_last_name].filter(Boolean).join(" ").trim() || verified.recipient_full_name;
+        const ok = await openTxConfirm(
+          `You are sending $${amountUsd.toFixed(2)} to ${fullName} (${verified.pay_handle}). Please confirm your transaction.`
+        );
+        if (!ok) {
+          setOut("Transfer cancelled.");
+          return;
+        }
+        const params = new URLSearchParams({
+          to_pay_handle: toPayHandle,
+          amount_usd: String(amountUsd),
+          note: note,
+        });
+        const data = await call(`/transfers/sahara?${params.toString()}`, "POST");
+        if (data.wallet_summary) renderSummary(data.wallet_summary);
+        setOut({ message: `Sent $${data.amount_usd} to ${data.to_pay_handle}.` });
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    function openTxConfirm(message) {
+      const backdrop = document.getElementById("tx_confirm_backdrop");
+      const text = document.getElementById("tx_confirm_text");
+      if (text) text.textContent = message || "Please confirm your transaction.";
+      if (backdrop) backdrop.style.display = "flex";
+      return new Promise((resolve) => {
+        txConfirmResolver = resolve;
+      });
+    }
+
+    function resolveTxConfirm(confirmed) {
+      const backdrop = document.getElementById("tx_confirm_backdrop");
+      if (backdrop) backdrop.style.display = "none";
+      if (txConfirmResolver) {
+        txConfirmResolver(!!confirmed);
+        txConfirmResolver = null;
+      }
+    }
+
+    function closeTxConfirm(evt = null) {
+      if (evt && evt.target && evt.target.id !== "tx_confirm_backdrop") return;
+      resolveTxConfirm(false);
+    }
+
+    async function loadProfile() {
+      try {
+        const data = await call("/me");
+        currentUserProfile = data;
+        applyAuthView();
+        applyPostKycMinimalView(data);
+        await loadPaypalInvoices();
+      }
+      catch (e) { setOut(e); }
+    }
+
+    async function loadTransactions() {
+      try {
+        await call("/transactions");
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function loadSummary() {
+      try {
+        const data = await call("/wallet/summary");
+        renderSummary(data);
+      } catch (e) { setOut(e); }
+    }
+
+    async function submitKyc() {
+      try {
+        const faceUrl = (document.getElementById("kyc_face_image_url")?.value || "").trim();
+        if (!faceUrl) {
+          throw { detail: "Please upload a face verification selfie before submitting." };
+        }
+        await call("/kyc/submit", "POST", {
+          passport_number: document.getElementById("kyc_passport_number").value,
+          passport_country: document.getElementById("kyc_passport_country").value,
+          residence_country: document.getElementById("kyc_residence_country").value,
+          current_city: document.getElementById("kyc_city").value,
+          passport_image_url: document.getElementById("kyc_passport_image_url").value,
+          face_verification_image_url: faceUrl,
+        });
+        await loadProfile();
+        await loadActivity();
+      } catch (e) { setOut(e); }
+    }
+
+    async function uploadWithForm(path, fileInputId) {
+      const input = document.getElementById(fileInputId);
+      if (!input.files || !input.files.length) throw { detail: "Select a file first." };
+      const form = new FormData();
+      form.append("file", input.files[0]);
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(path, { method: "POST", headers, body: form });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      return data;
+    }
+
+    async function uploadProfilePhoto() {
+      try {
+        await uploadWithForm("/me/photo", "profile_photo_file");
+        await loadProfile();
+      } catch (e) { setOut(e); }
+    }
+
+    async function uploadPassportForKyc() {
+      try {
+        const data = await uploadWithForm("/files/upload", "kyc_passport_file");
+        document.getElementById("kyc_passport_image_url").value = data.file_url;
+      } catch (e) { setOut(e); }
+    }
+
+    async function uploadFaceForKyc() {
+      try {
+        const data = await uploadWithForm("/files/upload", "kyc_face_file");
+        const el = document.getElementById("kyc_face_image_url");
+        if (el) el.value = data.file_url;
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function loadMyKyc() {
+      try {
+        await call("/kyc/me");
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function addPaymentMethod() {
+      try {
+        const methodType = document.getElementById("pm_type").value;
+        if (methodType === "card") {
+          const billingAddress = document.getElementById("pm_billing_address").value.trim();
+          const billingCity = document.getElementById("pm_billing_city").value.trim();
+          const billingCountry = document.getElementById("pm_billing_country").value.trim();
+          const billingPostal = document.getElementById("pm_billing_postal").value.trim();
+          if (!billingAddress || !billingCity || !billingCountry || !billingPostal) {
+            throw { detail: "For cards, please add billing address, city, country, and postal code." };
+          }
+        }
+
+        const data = await call("/me/payment-method", "POST", {
+          method_type: methodType,
+          provider: document.getElementById("pm_provider").value,
+          holder_name: document.getElementById("pm_holder").value,
+          account_number: document.getElementById("pm_number").value
+        });
+        await loadPaymentMethods();
+      } catch (e) { setOut(e); }
+    }
+
+    function scanCardFromCamera() {
+      const methodType = document.getElementById("pm_type");
+      if (methodType) methodType.value = "card";
+      onPaymentMethodTypeChange();
+      const input = document.getElementById("card_scan_file");
+      if (!input) return;
+      input.value = "";
+      input.click();
+    }
+
+    function parseCardText(rawText) {
+      const text = String(rawText || "").replace(/\r/g, "\n");
+      const compact = text.replace(/[^\d]/g, "");
+      const cardNumberMatch = compact.match(/\d{13,19}/);
+      const lines = text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      let holder = "";
+      for (const line of lines) {
+        const cleaned = line.replace(/[^A-Za-z\s]/g, "").trim();
+        if (!cleaned) continue;
+        if (cleaned.length < 5) continue;
+        if (/\b(VISA|MASTERCARD|MASTERCARD|DEBIT|CREDIT|CARD|BANK)\b/i.test(cleaned)) continue;
+        if ((cleaned.match(/\s/g) || []).length >= 1) {
+          holder = cleaned.replace(/\s+/g, " ").toUpperCase();
+          break;
+        }
+      }
+
+      let provider = "";
+      if (/visa/i.test(text)) provider = "Visa";
+      else if (/master\s*card|mastercard/i.test(text)) provider = "Mastercard";
+      else if (/amex|american express/i.test(text)) provider = "Amex";
+      else if (/verve/i.test(text)) provider = "Verve";
+      else provider = "Card scan";
+
+      return {
+        cardNumber: cardNumberMatch ? cardNumberMatch[0] : "",
+        holder,
+        provider,
+      };
+    }
+
+    async function handleCardScanSelected() {
+      try {
+        const input = document.getElementById("card_scan_file");
+        if (!input || !input.files || !input.files.length) return;
+        const file = input.files[0];
+
+        if (!window.Tesseract) {
+          throw { detail: "Card scan engine not loaded. Please type details manually." };
+        }
+
+        const result = await window.Tesseract.recognize(file, "eng");
+        const parsed = parseCardText(result && result.data ? result.data.text : "");
+
+        document.getElementById("pm_type").value = "card";
+        onPaymentMethodTypeChange();
+        if (parsed.provider) document.getElementById("pm_provider").value = parsed.provider;
+        if (parsed.holder) document.getElementById("pm_holder").value = parsed.holder;
+        if (parsed.cardNumber) document.getElementById("pm_number").value = parsed.cardNumber;
+
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    function onPaymentMethodTypeChange() {
+      const methodType = document.getElementById("pm_type")?.value || "card";
+      const billingBlock = document.getElementById("pm_billing_block");
+      if (billingBlock) {
+        billingBlock.style.display = methodType === "card" ? "block" : "none";
+      }
+    }
+
+    function escapeHtmlPm(s) {
+      if (s === undefined || s === null) return "";
+      const div = document.createElement("div");
+      div.textContent = String(s);
+      return div.innerHTML;
+    }
+
+    function togglePmAddForm() {
+      const formWrap = document.getElementById("pm_add_form_wrap");
+      if (!formWrap) return;
+      formWrap.classList.toggle("collapsed");
+    }
+
+    function renderPaymentMethods(rows) {
+      const savedRoot = document.getElementById("payment_methods_saved");
+      const trigger = document.getElementById("pm_add_trigger");
+      const formWrap = document.getElementById("pm_add_form_wrap");
+      if (!savedRoot) return;
+      if (!rows || !rows.length) {
+        savedRoot.innerHTML = `<div class="pm-empty">No payment methods yet. Add a card or bank account below.</div>`;
+        if (trigger) trigger.style.display = "none";
+        if (formWrap) formWrap.classList.remove("collapsed");
+        return;
+      }
+      savedRoot.innerHTML = rows
+        .map((r) => {
+          const isCard = (r.method_type || "").toLowerCase() === "card";
+          const brand = (r.provider || (isCard ? "Card" : "Bank")).trim();
+          const line2 = `•••• ${r.last4}`;
+          return `
+        <div class="pm-saved-card">
+          <div class="pm-saved-brand">${escapeHtmlPm(brand)}</div>
+          <div class="pm-saved-meta">${escapeHtmlPm(line2)}</div>
+        </div>`;
+        })
+        .join("");
+      if (trigger) trigger.style.display = "flex";
+      if (formWrap) formWrap.classList.add("collapsed");
+    }
+
+    async function loadPaymentMethods() {
+      try {
+        const savedRoot = document.getElementById("payment_methods_saved");
+        if (savedRoot) {
+          savedRoot.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div>`;
+        }
+        const data = await call("/me/payment-methods");
+        renderPaymentMethods(data);
+      } catch (e) {}
+    }
+
+    function renderActivity(rows) {
+      activityCache = rows || [];
+      const root = document.getElementById("activity_list");
+      const moreBtn = document.getElementById("activity_more_btn");
+      const pdfBtn = document.getElementById("activity_pdf_btn");
+      if (!root) return;
+      if (!activityCache.length) {
+        root.innerHTML = `<div class="activity-item"><div class="activity-summary">No recent activity yet.</div></div>`;
+        if (moreBtn) moreBtn.style.display = "none";
+        if (pdfBtn) pdfBtn.style.display = "none";
+        return;
+      }
+      const visibleRows = activityExpanded ? activityCache : activityCache.slice(0, 3);
+      root.innerHTML = visibleRows.map((r) => `
+        <div class="activity-item">
+          <div class="time">${new Date(r.timestamp).toLocaleString()}</div>
+          <div class="activity-summary">${escapeHtml(r.summary || "")}</div>
+        </div>
+      `).join("");
+      if (moreBtn) {
+        moreBtn.style.display = activityCache.length > 3 ? "inline-block" : "none";
+        moreBtn.textContent = activityExpanded ? "Show less" : "Show more";
+      }
+      if (pdfBtn) pdfBtn.style.display = "inline-block";
+    }
+
+    function escapeHtml(s) {
+      if (s === undefined || s === null) return "";
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    async function downloadActivityPdf() {
+      const JsPDF = window.jspdf && (window.jspdf.jsPDF || window.jspdf);
+      if (!JsPDF) {
+        return;
+      }
+      const rows = activityCache && activityCache.length ? activityCache : [];
+      if (!rows.length) {
+        return;
+      }
+      let invoices = [];
+      try {
+        invoices = await call("/demo/paypal/invoices");
+      } catch (_) {
+        invoices = [];
+      }
+      const doc = new JsPDF({ unit: "pt", format: "a4" });
+      const margin = 48;
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      function ensureSpace(needed) {
+        if (y + needed > pageH - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      }
+
+      function addParagraph(text, fontSize = 10, bold = false) {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(fontSize);
+        doc.setTextColor(28, 28, 28);
+        const lines = doc.splitTextToSize(String(text), maxW);
+        lines.forEach((line) => {
+          ensureSpace(16);
+          doc.text(line, margin, y);
+          y += fontSize + 4;
+        });
+      }
+
+      addParagraph("Sahara — Activity statement", 16, true);
+      y += 4;
+      addParagraph(`Generated: ${new Date().toLocaleString()}`, 9);
+      y += 6;
+      const name = currentUserProfile?.full_name || "-";
+      const email = currentUserProfile?.email || "-";
+      let pid = currentUserProfile?.public_id || "-";
+      if (pid === "-" && token) {
+        try {
+          const pub = await call("/me/public-id");
+          pid = pub.public_id || "-";
+        } catch (_) {}
+      }
+      addParagraph(`Account name: ${name}`, 10);
+      addParagraph(`Email: ${email}`, 10);
+      addParagraph(`Sahara ID: ${pid}`, 10);
+      y += 8;
+      addParagraph("Activity (most recent first)", 11, true);
+      y += 4;
+      rows.forEach((r) => {
+        const when = r.timestamp ? new Date(r.timestamp).toLocaleString() : "-";
+        const line = `${when} — ${r.summary || ""}`;
+        addParagraph(line, 9);
+      });
+      y += 10;
+      addParagraph("Demo PayPal invoices (reference)", 11, true);
+      y += 4;
+      if (invoices && invoices.length) {
+        invoices.forEach((inv) => {
+          const st = inv.status || "pending";
+          const paid = inv.paid_at ? new Date(inv.paid_at).toLocaleString() : "—";
+          addParagraph(
+            `Invoice ${inv.invoice_code || "-"} · $${inv.amount_usd ?? "-"} · ${st} · paid: ${paid}` +
+              (inv.client_name ? ` · Client: ${inv.client_name}` : ""),
+            9,
+          );
+        });
+      } else {
+        addParagraph("No demo PayPal invoices on file.", 9);
+      }
+      y += 12;
+      addParagraph(
+        "Legal notice: This PDF is a user-generated summary from the Sahara demo environment. " +
+          "It is not a bank statement, tax invoice, or regulatory license. " +
+          "Retain official PayPal invoices and contracts for your business records.",
+        8,
+      );
+      const safe =
+        (email || "user").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 40) || "sahara";
+      doc.save(`sahara-activity-${safe}-${Date.now()}.pdf`);
+    }
+
+    async function loadActivity() {
+      try {
+        activityExpanded = false;
+        const root = document.getElementById("activity_list");
+        if (root) {
+          root.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
+        }
+        const data = await call("/me/activity");
+        renderActivity(data);
+      } catch (e) {}
+    }
+
+    function toggleActivityView() {
+      activityExpanded = !activityExpanded;
+      renderActivity(activityCache);
+    }
+
+    async function loadAdminStats() {
+      try {
+        const data = await call("/admin/stats");
+        renderAdminStats(data);
+      } catch (e) { setOut(e); }
+    }
+
+    async function loadAdminUsers() {
+      try {
+        await call("/admin/users");
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function loadAdminKyc() {
+      try {
+        await call("/admin/kyc-submissions");
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function loadAdminWithdrawals() {
+      try {
+        await call("/admin/withdrawals");
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    async function loadAdminActivity() {
+      try {
+        await call("/admin/activity-feed");
+      } catch (e) {
+        setOut(e);
+      }
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/static/sw.js").catch(() => {});
+      });
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      updateInstallButtonVisibility();
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      updateInstallButtonVisibility();
+    });
+
+    function initReferralFromUrl() {
+      try {
+        const p = new URLSearchParams(window.location.search).get("ref");
+        if (p && String(p).trim()) {
+          sessionStorage.setItem("gw_referral_code", String(p).trim().toUpperCase());
+        }
+      } catch (_) {}
+    }
+
+    initTheme();
+    initReferralFromUrl();
+    showSignInCard();
+    onPaymentMethodTypeChange();
+    restoreSession();
+  </script>
+</body>
+</html>

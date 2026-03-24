@@ -1,0 +1,18 @@
+{
+  "name": "Sahara Wallet",
+  "short_name": "Sahara",
+  "description": "Cross-border wallet demo",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#1c1b1a",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

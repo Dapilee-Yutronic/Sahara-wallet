@@ -1,0 +1,11 @@
+# Optional: Render Blueprint — "New Blueprint" → paste this repo, or connect repo and use Dashboard instead.
+# Free tier: disk may require a paid plan; without /data volume, SQLite resets on each deploy (OK for quick demos).
+services:
+  - type: web
+    name: sahara-wallet
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: sahara-sqlite
+      mountPath: /data
+      sizeGB: 1

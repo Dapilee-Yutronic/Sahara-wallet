@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Wallet Admin</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2d; --text:#e6eefc; --muted:#9bb0d4; --border:#22304a; --primary:#3b82f6; --ok:#22c55e; --warn:#f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; position: sticky; top: 10px; z-index: 40; border:1px solid color-mix(in srgb, var(--border) 72%, var(--primary) 28%); border-radius:14px; padding:10px 12px; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 76%, white 24%); box-shadow: 0 12px 28px rgba(0,0,0,0.2); }
+    .top-right { display:flex; gap:10px; align-items:center; }
+    .title { font-size:22px; font-weight:700; margin:0; }
+    .sub { color:var(--muted); margin:4px 0 0; font-size:13px; }
+    .eyebrow { display:inline-flex; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:4px 8px; margin-bottom:8px; background:#0e1729; }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:14px; }
+    .card { background:var(--card); border:1px solid color-mix(in srgb, var(--border) 72%, var(--primary) 28%); border-radius:16px; padding:16px; box-shadow: 0 10px 22px rgba(0,0,0,0.16); transition: transform .16s ease, box-shadow .2s ease, border-color .2s ease; }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,0.2); border-color: color-mix(in srgb, var(--border) 70%, var(--primary) 30%); }
+    .s4{grid-column:span 4;} .s6{grid-column:span 6;} .s8{grid-column:span 8;} .s12{grid-column:span 12;}
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    input, button { width:100%; padding:11px 12px; border-radius:12px; border:1px solid var(--border); background:#0e1729; color:var(--text); }
+    button { background:var(--primary); border:none; font-weight:600; cursor:pointer; }
+    .mutebtn { background:linear-gradient(135deg, #1b2a45, #213a63); border:1px solid #2e4468; }
+    .stats { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+    .metric { border:1px solid var(--border); border-radius:12px; padding:10px; background:#0e1729; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+    .label { font-size:12px; color:var(--muted); margin-bottom:4px; }
+    .val { font-size:16px; font-weight:700; } .ok{color:var(--ok);} .warn{color:var(--warn);}
+    pre { margin:0; background:#050a14; border:1px solid #1f2f4a; color:#c8dcff; padding:12px; border-radius:10px; max-height:300px; overflow:auto; font-size:12px; }
+    canvas { width:100% !important; max-height:260px; }
+    #map { height: 320px; border-radius: 10px; border:1px solid var(--border); }
+    table { width:100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom:1px solid var(--border); padding:8px; text-align:left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid var(--border); }
+    .notify-btn { width:auto; padding:10px 12px; background:#1b2a45; border:1px solid #2e4468; position:relative; }
+    .badge {
+      position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff;
+      border-radius:999px; font-size:11px; min-width:20px; height:20px; display:flex;
+      align-items:center; justify-content:center; padding:0 6px;
+    }
+    .notify-panel {
+      display:none; position:absolute; right:0; top:62px; width:420px; max-height:60vh;
+      overflow:auto; border:1px solid var(--border); background:#0e1729; border-radius:12px; padding:10px; z-index:999;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    }
+    .notify-panel.show { display:block; }
+    .notif-row { border:1px solid #243758; border-radius:10px; padding:10px; margin-bottom:8px; background:#0b1527; }
+    .notif-row h4 { margin:0 0 6px; font-size:13px; }
+    .notif-row p { margin:3px 0; font-size:12px; color:#c9d7ef; }
+    .notif-actions { display:flex; gap:8px; margin-top:8px; }
+    .notif-actions button { margin:0; padding:8px 10px; }
+    .pill { display:inline-block; border:1px solid #2e4468; background:#13213a; color:#c5d8f8; border-radius:999px; font-size:11px; padding:4px 8px; margin-left:8px; }
+    .toast-wrap { position: fixed; right: 16px; bottom: 16px; z-index: 1100; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background:#0f1a2e; border:1px solid #2a3a58; border-radius:10px; padding:10px 12px; color:#d6e5ff; min-width:280px; box-shadow:0 10px 24px rgba(0,0,0,0.35); }
+    .toast b { color:#93c5fd; }
+    .skeleton { position:relative; overflow:hidden; background:#0f1a2e; border:1px solid var(--border); border-radius:10px; min-height:54px; }
+    .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent); animation: shimmer 1.1s infinite; }
+    @keyframes shimmer { 100% { transform:translateX(100%); } }
+    @media (max-width: 960px){ .s4,.s6,.s8{grid-column:span 12;} .stats{grid-template-columns:1fr 1fr;} .row{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <p class="title">Admin Control Center</p>
+        <p class="sub">Monitor users, KYC, transactions, and money movement.</p>
+      </div>
+      <div class="top-right">
+        <button type="button" id="notify_btn" class="notify-btn admin-only" onclick="toggleNotifications()" style="display:none;">KYC Alerts <span id="notify_badge" class="badge">0</span></button>
+        <button type="button" id="admin_logout_btn" class="mutebtn admin-only" onclick="adminLogout()" style="display:none; width:auto; padding:10px 12px;">Log out</button>
+        <a href="/" style="color:#93c5fd;">Back to User App</a>
+      </div>
+    </div>
+    <div id="notify_panel" class="notify-panel admin-only" style="display:none;"></div>
+    <div id="toast_wrap" class="toast-wrap"></div>
+
+    <div class="grid">
+      <div class="card s6">
+        <div class="eyebrow">Authentication</div>
+        <h3>Admin Login</h3>
+        <div class="row">
+          <input id="email" placeholder="admin@globalwallet.app" />
+          <input id="password" type="password" placeholder="Password" />
+        </div>
+        <button type="button" onclick="login()">Login as Admin</button>
+      </div>
+
+      <div class="card s6 admin-only" style="display:none;">
+        <h3>KYC Review Action</h3>
+        <div class="row">
+          <input id="submission_id" placeholder="Submission ID" />
+          <input id="review_notes" placeholder="Reviewer notes" />
+        </div>
+        <div class="row">
+          <button type="button" class="mutebtn" onclick="reviewKyc('approved')">Approve</button>
+          <button type="button" class="mutebtn" onclick="reviewKyc('rejected')">Reject</button>
+        </div>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <h3>Live Stats</h3>
+        <div class="stats">
+          <div class="metric"><div class="label">Total Users</div><div id="m_users" class="val">-</div></div>
+          <div class="metric"><div class="label">Pending KYC</div><div id="m_pending" class="val warn">-</div></div>
+          <div class="metric"><div class="label">Approved KYC</div><div id="m_approved" class="val ok">-</div></div>
+          <div class="metric"><div class="label">Total USD In</div><div id="m_usd" class="val">-</div></div>
+          <div class="metric"><div class="label">Transactions</div><div id="m_tx" class="val">-</div></div>
+        </div>
+      </div>
+
+      <div class="card s8 admin-only" style="display:none;">
+        <h3>Admin Queries</h3>
+        <button type="button" class="mutebtn" onclick="loadStats()">Stats</button>
+        <button type="button" class="mutebtn" onclick="show('/admin/users')">Users</button>
+        <button type="button" class="mutebtn" onclick="show('/admin/kyc-submissions')">KYC Queue</button>
+        <button type="button" class="mutebtn" onclick="show('/admin/withdrawals')">Withdrawals</button>
+        <button type="button" class="mutebtn" onclick="show('/admin/activity-feed')">Activity Feed</button>
+        <button type="button" class="mutebtn" onclick="loadDashboard()">Reload Dashboard</button>
+      </div>
+
+      <div class="card s4 admin-only" style="display:none;">
+        <h3>Default Admin</h3>
+        <p class="sub">Email: admin@globalwallet.app</p>
+        <p class="sub">Password: Admin123!</p>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <h3>Growth Charts</h3>
+        <div class="row">
+          <div><canvas id="signins_chart"></canvas></div>
+          <div><canvas id="tx_chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card s6 admin-only" style="display:none;">
+        <h3>User Growth</h3>
+        <canvas id="users_chart"></canvas>
+      </div>
+
+      <div class="card s6 admin-only" style="display:none;">
+        <h3>Users by Country</h3>
+        <canvas id="country_chart"></canvas>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <h3>Country Map (KYC Location)</h3>
+        <div id="map"></div>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <div class="eyebrow">Operations</div>
+        <h3>Users & Credentials View (Secure)</h3>
+        <p class="sub">Passwords are never shown in plain text. This view includes user identity, KYC, and uploaded profile photos.</p>
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>KYC</th>
+                <th>Location</th>
+                <th>Password/Credentials</th>
+                <th>Activity</th>
+              </tr>
+            </thead>
+            <tbody id="users_table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <h3>Submission Review Queue <span id="last_refresh" class="pill">not refreshed</span></h3>
+        <p class="sub">All pending passport/KYC submissions appear here in real time.</p>
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Submission ID</th>
+                <th>User</th>
+                <th>Passport</th>
+                <th>Location</th>
+                <th>Image</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="submission_queue_table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card s12">
+        <h3>KYC Management (Lifecycle)</h3>
+        <p class="sub">Manage users after submission. You can approve, reject, or revoke later if needed.</p>
+        <div>
+          <button type="button" class="mutebtn" onclick="loadKycManagement('submitted')">Pending</button>
+          <button type="button" class="mutebtn" onclick="loadKycManagement('approved')">Approved</button>
+          <button type="button" class="mutebtn" onclick="loadKycManagement('rejected')">Rejected</button>
+          <button type="button" class="mutebtn" onclick="loadKycManagement('all')">All</button>
+        </div>
+        <div style="overflow:auto; margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>KYC Status</th>
+                <th>Passport</th>
+                <th>Location</th>
+                <th>Last Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="kyc_mgmt_table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <h3>Activity Logs / Output</h3>
+        <pre id="out"></pre>
+      </div>
+    </div>
+  </div>
+  <script>
+    let token = "";
+    let map;
+    let mapLayer;
+    let signinsChart;
+    let txChart;
+    let usersChart;
+    let countryChart;
+    let pendingKyc = [];
+    let knownSubmissionIds = [];
+    let notificationTimer = null;
+    let isAdminAuthenticated = false;
+    const out = (v) => document.getElementById("out").textContent = JSON.stringify(v, null, 2);
+    function setAdminView(authenticated) {
+      isAdminAuthenticated = authenticated;
+      document.querySelectorAll(".admin-only").forEach((el) => {
+        el.style.display = authenticated ? "" : "none";
+      });
+    }
+    function setAdminToken(nextToken) {
+      token = nextToken || "";
+      if (token) localStorage.setItem("gw_admin_token", token);
+      else localStorage.removeItem("gw_admin_token");
+    }
+    async function restoreAdminSession() {
+      const saved = localStorage.getItem("gw_admin_token");
+      if (!saved) return;
+      setAdminToken(saved);
+      try {
+        await req("/admin/stats");
+        setAdminView(true);
+        requestBrowserNotificationPermission();
+        loadSeenSubmissionIds();
+        await loadDashboard();
+        startNotificationPolling();
+      } catch (_) {
+        setAdminToken("");
+        setAdminView(false);
+      }
+    }
+    async function req(path, method = "GET", body = null) {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      return data;
+    }
+    async function login() {
+      try {
+        const data = await req("/auth/login", "POST", {
+          email: document.getElementById("email").value,
+          password: document.getElementById("password").value
+        });
+        setAdminToken(data.access_token);
+        setAdminView(true);
+        out({ message: "Admin login successful", token_preview: token.slice(0, 20) + "..." });
+        requestBrowserNotificationPermission();
+        loadSeenSubmissionIds();
+        await loadDashboard();
+        startNotificationPolling();
+      } catch (e) { out(e); }
+    }
+    function adminLogout() {
+      setAdminToken("");
+      setAdminView(false);
+      if (notificationTimer) clearInterval(notificationTimer);
+      out({ message: "Logged out" });
+    }
+    async function show(path) { try { out(await req(path)); } catch (e) { out(e); } }
+    async function loadStats() {
+      try {
+        const s = await req("/admin/stats");
+        renderAdminStats(s);
+        out(s);
+      } catch (e) { out(e); }
+    }
+
+    function renderAdminStats(s) {
+      document.getElementById("m_users").textContent = s.total_users ?? "-";
+      document.getElementById("m_pending").textContent = s.pending_kyc ?? "-";
+      document.getElementById("m_approved").textContent = s.approved_kyc ?? "-";
+      document.getElementById("m_usd").textContent = s.total_usd_in ?? "-";
+      document.getElementById("m_tx").textContent = s.total_transactions ?? "-";
+    }
+
+    function drawLineChart(canvasId, chartRef, labels, data, label, color) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return chartRef;
+      if (chartRef) chartRef.destroy();
+      if (typeof Chart === "undefined") return chartRef;
+      return new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets: [{ label, data, borderColor: color, backgroundColor: "rgba(59,130,246,0.2)", tension: 0.25, fill: true }] },
+        options: { plugins: { legend: { labels: { color: "#c8dcff" } } }, scales: { x: { ticks: { color: "#9bb0d4" } }, y: { ticks: { color: "#9bb0d4" } } } }
+      });
+    }
+
+    function drawBarChart(canvasId, chartRef, labels, data, label, color) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return chartRef;
+      if (chartRef) chartRef.destroy();
+      if (typeof Chart === "undefined") return chartRef;
+      return new Chart(ctx, {
+        type: "bar",
+        data: { labels, datasets: [{ label, data, backgroundColor: color }] },
+        options: { plugins: { legend: { labels: { color: "#c8dcff" } } }, scales: { x: { ticks: { color: "#9bb0d4" } }, y: { ticks: { color: "#9bb0d4" } } } }
+      });
+    }
+
+    function ensureMap() {
+      if (map) return;
+      if (typeof L === "undefined") return;
+      map = L.map("map").setView([10, 0], 2);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap" }).addTo(map);
+      mapLayer = L.layerGroup().addTo(map);
+    }
+
+    function renderMap(points) {
+      ensureMap();
+      if (!mapLayer) return;
+      mapLayer.clearLayers();
+      (points || []).forEach((p) => {
+        const radius = Math.max(6, Math.min(20, p.count * 2));
+        L.circleMarker([p.lat, p.lng], { radius, color: "#22d3ee", fillColor: "#3b82f6", fillOpacity: 0.6 })
+          .bindPopup(`${p.country}: ${p.count} users`)
+          .addTo(mapLayer);
+      });
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById("users_table");
+      tbody.innerHTML = "";
+      (users || []).forEach((u) => {
+        const tr = document.createElement("tr");
+        const img = u.profile_photo_url ? `<img class="avatar" src="${u.profile_photo_url}" alt="photo" />` : "-";
+        tr.innerHTML = `
+          <td>${img}</td>
+          <td>${u.full_name || "-"}</td>
+          <td>${u.email || "-"}</td>
+          <td>${u.kyc_status || "-"}</td>
+          <td>${u.current_city || "-"}, ${u.residence_country || "-"}</td>
+          <td>${u.password_visibility || "Secure hash only"}</td>
+          <td><button type="button" class="mutebtn" onclick="viewUserActivity(${u.id})">View activity</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function viewUserActivity(userId) {
+      try {
+        const data = await req(`/admin/users/${userId}/activity`);
+        out(data);
+      } catch (e) { out(e); }
+    }
+
+    function loadSeenSubmissionIds() {
+      try {
+        const raw = localStorage.getItem("gw_seen_kyc_ids");
+        knownSubmissionIds = raw ? JSON.parse(raw) : [];
+      } catch {
+        knownSubmissionIds = [];
+      }
+    }
+
+    function saveSeenSubmissionIds() {
+      localStorage.setItem("gw_seen_kyc_ids", JSON.stringify(knownSubmissionIds.slice(-500)));
+    }
+
+    function requestBrowserNotificationPermission() {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "default") Notification.requestPermission();
+    }
+
+    function raiseBrowserNotification(title, body) {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        new Notification(title, { body });
+      }
+    }
+
+    function updateNotificationBadge() {
+      const badge = document.getElementById("notify_badge");
+      badge.textContent = String(pendingKyc.length);
+      badge.style.display = pendingKyc.length ? "flex" : "none";
+    }
+
+    function renderNotificationPanel() {
+      const panel = document.getElementById("notify_panel");
+      if (!pendingKyc.length) {
+        panel.innerHTML = "<div class='notif-row'><h4>No pending KYC approvals</h4><p>New passport submissions will appear here.</p></div>";
+        return;
+      }
+      panel.innerHTML = pendingKyc.map((k) => `
+        <div class="notif-row">
+          <h4>${k.full_name || "User"} submitted passport</h4>
+          <p><b>User ID:</b> ${k.user_id}</p>
+          <p><b>Country:</b> ${k.residence_country || "-"}</p>
+          <p><b>City:</b> ${k.current_city || "-"}</p>
+          <p><b>Passport #:</b> ${k.passport_number || "-"}</p>
+          <p><a href="${k.passport_image_url}" target="_blank" style="color:#93c5fd;">Open ID / passport image</a></p>
+          ${k.face_verification_image_url ? `<p><a href="${k.face_verification_image_url}" target="_blank" style="color:#93c5fd;">Open face selfie</a></p>` : "<p><i>No selfie URL</i></p>"}
+          <div class="notif-actions">
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function showToast(message) {
+      const wrap = document.getElementById("toast_wrap");
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.innerHTML = message;
+      wrap.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 250);
+      }, 4500);
+    }
+
+    function renderSubmissionQueue() {
+      const tbody = document.getElementById("submission_queue_table");
+      tbody.innerHTML = "";
+      if (!pendingKyc.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="7">No pending submissions right now.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+      pendingKyc.forEach((k) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${k.id}</td>
+          <td>${k.full_name || "Unknown"} (ID: ${k.user_id})</td>
+          <td>${k.passport_number || "-"} / ${k.passport_country || "-"}</td>
+          <td>${k.current_city || "-"}, ${k.residence_country || "-"}</td>
+          <td>
+            <a href="${k.passport_image_url}" target="_blank" style="color:#93c5fd;">ID</a>
+            ${k.face_verification_image_url ? ` · <a href="${k.face_verification_image_url}" target="_blank" style="color:#93c5fd;">Face</a>` : ""}
+          </td>
+          <td>${k.status}</td>
+          <td>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function updateUserKycStatus(userId, status, notes = "") {
+      const q = notes ? `&notes=${encodeURIComponent(notes)}` : "";
+      return req(`/admin/users/${userId}/kyc?status=${status}${q}`, "PATCH");
+    }
+
+    function renderKycManagementTable(items) {
+      const tbody = document.getElementById("kyc_mgmt_table");
+      tbody.innerHTML = "";
+      if (!items.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="6">No users in this status.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+      items.forEach((k) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${k.full_name || "Unknown"} (ID: ${k.user_id})</td>
+          <td>${k.status || "-"}</td>
+          <td>${k.passport_number || "-"} / ${k.passport_country || "-"}</td>
+          <td>${k.current_city || "-"}, ${k.residence_country || "-"}</td>
+          <td>${k.reviewer_notes || "-"}</td>
+          <td>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>
+            <button type="button" class="mutebtn" onclick="revokeKyc(${k.user_id})">Revoke</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadKycManagement(filterStatus = "submitted") {
+      try {
+        const [rows, users] = await Promise.all([req("/admin/kyc-submissions"), req("/admin/users")]);
+        const nameByUserId = {};
+        (users || []).forEach((u) => { nameByUserId[u.id] = u.full_name; });
+        const list = (rows || []).map((r) => ({ ...r, full_name: nameByUserId[r.user_id] || "Unknown" }));
+        const filtered = filterStatus === "all" ? list : list.filter((r) => r.status === filterStatus);
+        renderKycManagementTable(filtered);
+      } catch (e) { out(e); }
+    }
+
+    async function revokeKyc(userId) {
+      try {
+        await updateUserKycStatus(userId, "rejected", "Revoked after additional review");
+        showToast(`<b>KYC revoked</b><br>User ID: ${userId}`);
+        await Promise.all([loadDashboard(), refreshNotifications(), loadKycManagement("all")]);
+      } catch (e) { out(e); }
+    }
+
+    function toggleNotifications() {
+      const panel = document.getElementById("notify_panel");
+      panel.classList.toggle("show");
+      if (panel.classList.contains("show")) {
+        renderNotificationPanel();
+      }
+    }
+
+    async function refreshNotifications() {
+      if (!token) return;
+      try {
+        const rows = await req("/admin/kyc-submissions");
+        let users = [];
+        try {
+          users = await req("/admin/users");
+        } catch {
+          users = [];
+        }
+        const nameByUserId = {};
+        (users || []).forEach((u) => { nameByUserId[u.id] = u.full_name; });
+        pendingKyc = (rows || [])
+          .filter((r) => r.status === "submitted")
+          .map((r) => ({ ...r, full_name: nameByUserId[r.user_id] || "Unknown" }));
+
+        const newRows = pendingKyc.filter((r) => !knownSubmissionIds.includes(r.id));
+        if (newRows.length) {
+          newRows.forEach((r) => {
+            knownSubmissionIds.push(r.id);
+            raiseBrowserNotification("New KYC submission", `${r.full_name} (${r.residence_country || "Unknown"})`);
+            showToast(`<b>New KYC submission</b><br>${r.full_name} from ${r.residence_country || "Unknown"}<br>Submission ID: ${r.id}`);
+          });
+          saveSeenSubmissionIds();
+        }
+
+        updateNotificationBadge();
+        renderNotificationPanel();
+        renderSubmissionQueue();
+        const stamp = new Date().toLocaleTimeString();
+        document.getElementById("last_refresh").textContent = `updated ${stamp}`;
+      } catch (e) {
+        showToast(`<b>Refresh warning</b><br>Could not fetch submissions. Check admin login/session.`);
+      }
+    }
+
+    function startNotificationPolling() {
+      if (notificationTimer) clearInterval(notificationTimer);
+      refreshNotifications();
+      notificationTimer = setInterval(refreshNotifications, 15000);
+    }
+
+    async function quickReviewKyc(id, status) {
+      try {
+        await req(`/admin/kyc-submissions/${id}?status=${status}&notes=Reviewed%20from%20alerts`, "PATCH");
+        out({ message: `KYC ${status}`, submission_id: id });
+        await Promise.all([loadDashboard(), refreshNotifications()]);
+      } catch (e) { out(e); }
+    }
+
+    async function loadDashboard() {
+      try {
+        const usersTable = document.getElementById("users_table");
+        if (usersTable) {
+          usersTable.innerHTML = `<tr><td colspan="8"><div class="skeleton"></div></td></tr>`;
+        }
+        const [stats, analytics, users] = await Promise.all([
+          req("/admin/stats"),
+          req("/admin/analytics"),
+          req("/admin/users")
+        ]);
+        renderAdminStats(stats);
+        renderUsersTable(users);
+
+        signinsChart = drawLineChart(
+          "signins_chart",
+          signinsChart,
+          analytics.signins_by_day.map((x) => x.day),
+          analytics.signins_by_day.map((x) => x.count),
+          "Sign-ins per day",
+          "#22c55e"
+        );
+        txChart = drawLineChart(
+          "tx_chart",
+          txChart,
+          analytics.transactions_by_day.map((x) => x.day),
+          analytics.transactions_by_day.map((x) => x.count),
+          "Transactions per day",
+          "#3b82f6"
+        );
+        usersChart = drawLineChart(
+          "users_chart",
+          usersChart,
+          analytics.users_by_day.map((x) => x.day),
+          analytics.users_by_day.map((x) => x.count),
+          "New users per day",
+          "#a78bfa"
+        );
+        countryChart = drawBarChart(
+          "country_chart",
+          countryChart,
+          analytics.users_by_country.map((x) => x.country),
+          analytics.users_by_country.map((x) => x.count),
+          "Users by country",
+          "#14b8a6"
+        );
+        renderMap(analytics.map_points);
+        await loadKycManagement("submitted");
+        out({ stats, analytics_preview: analytics.users_by_country.slice(0, 5), users_preview: users.slice(0, 3) });
+      } catch (e) { out(e); }
+    }
+    async function reviewKyc(status) {
+      try {
+        const id = document.getElementById("submission_id").value;
+        const notes = encodeURIComponent(document.getElementById("review_notes").value || "");
+        out(await req(`/admin/kyc-submissions/${id}?status=${status}&notes=${notes}`, "PATCH"));
+        await Promise.all([loadStats(), refreshNotifications()]);
+      } catch (e) { out(e); }
+    }
+
+    document.addEventListener("click", (event) => {
+      const panel = document.getElementById("notify_panel");
+      const btn = document.getElementById("notify_btn");
+      if (!panel || !btn) return;
+      if (!panel.contains(event.target) && !btn.contains(event.target)) {
+        panel.classList.remove("show");
+      }
+    });
+
+    setAdminView(false);
+    restoreAdminSession();
+  </script>
+</body>
+</html>
