@@ -4809,6 +4809,14 @@
       if (avatar && avatarWrap) {
         if (approved && profile && profile.profile_photo_url) {
           avatar.src = profile.profile_photo_url;
+          // If the stored avatar URL points to a missing file (e.g., after redeploys),
+          // hide the avatar UI instead of showing the browser broken-image icon.
+          avatar.onerror = () => {
+            avatarWrap.style.display = "none";
+            try {
+              avatar.removeAttribute("src");
+            } catch (_) {}
+          };
           avatar.removeAttribute("aria-hidden");
           avatarWrap.style.display = "inline-flex";
         } else {
