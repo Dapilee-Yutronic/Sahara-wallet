@@ -1538,6 +1538,17 @@
       color: #ffffff !important;
     }
 
+    /* More robust "active" styling for mobile (JS toggles this class). */
+    .wallet-ops-peer-toggle.wallet-ops-peer-toggle--active {
+      background: color-mix(in srgb, var(--primary) 88%, var(--accent) 12%) !important;
+      border: 1px solid color-mix(in srgb, var(--accent) 75%, var(--primary) 25%) !important;
+      border-radius: 12px !important;
+      padding: 10px 12px !important;
+      margin: 0 0 10px !important;
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.18) !important;
+      color: #ffffff !important;
+    }
+
     /* Subtle hover for the active/open tab (mobile users often hover via touch). */
     .wallet-ops-peer-toggle[aria-expanded="true"]:hover {
       background: color-mix(in srgb, var(--primary) 84%, var(--accent) 16%) !important;
@@ -5805,8 +5816,10 @@
       const btn = document.getElementById(btnId);
       if (!body) return;
       const isOpen = body.style.display !== "none";
-      body.style.display = isOpen ? "none" : "block";
-      if (btn && btn.setAttribute) btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+      const nextOpen = !isOpen;
+      body.style.display = nextOpen ? "block" : "none";
+      if (btn && btn.setAttribute) btn.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+      if (btn && btn.classList) btn.classList.toggle("wallet-ops-peer-toggle--active", nextOpen);
     }
 
     function closeWalletOpsSheet(evt) {
