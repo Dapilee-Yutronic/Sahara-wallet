@@ -1529,29 +1529,30 @@
 
     /* When open, make the toggle look like an active "tab". */
     .wallet-ops-peer-toggle[aria-expanded="true"] {
-      background: color-mix(in srgb, var(--primary) 88%, var(--accent) 12%) !important;
-      border: 1px solid color-mix(in srgb, var(--accent) 75%, var(--primary) 25%) !important;
+      background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%) !important;
+      border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border) 45%) !important;
       border-radius: 12px !important;
       padding: 10px 12px !important;
       margin: 0 0 10px !important;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
-      color: #ffffff !important;
+      /* Match the "PC feel" (ringy) so it is visible on mobile taps too. */
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+      color: var(--text) !important;
     }
 
     /* More robust "active" styling for mobile (JS toggles this class). */
     .wallet-ops-peer-toggle.wallet-ops-peer-toggle--active {
-      background: color-mix(in srgb, var(--primary) 88%, var(--accent) 12%) !important;
-      border: 1px solid color-mix(in srgb, var(--accent) 75%, var(--primary) 25%) !important;
+      background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%) !important;
+      border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border) 45%) !important;
       border-radius: 12px !important;
       padding: 10px 12px !important;
       margin: 0 0 10px !important;
-      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.18) !important;
-      color: #ffffff !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+      color: var(--text) !important;
     }
 
     /* Subtle hover for the active/open tab (mobile users often hover via touch). */
     .wallet-ops-peer-toggle[aria-expanded="true"]:hover {
-      background: color-mix(in srgb, var(--primary) 84%, var(--accent) 16%) !important;
+      background: color-mix(in srgb, var(--card) 82%, var(--accent) 18%) !important;
     }
 
     .wallet-ops-peer-panel-body {
@@ -5817,6 +5818,21 @@
       if (!body) return;
       const isOpen = body.style.display !== "none";
       const nextOpen = !isOpen;
+
+      // Accordion behavior: only one of Pay/Request can be open at a time.
+      const partnerBodyId =
+        bodyId === "wo_pay_body" ? "wo_req_body" : bodyId === "wo_req_body" ? "wo_pay_body" : null;
+      const partnerBtnId =
+        btnId === "wo_pay_title" ? "wo_req_title" : btnId === "wo_req_title" ? "wo_pay_title" : null;
+
+      if (nextOpen && partnerBodyId) {
+        const partnerBody = document.getElementById(partnerBodyId);
+        const partnerBtn = document.getElementById(partnerBtnId);
+        if (partnerBody) partnerBody.style.display = "none";
+        if (partnerBtn && partnerBtn.setAttribute) partnerBtn.setAttribute("aria-expanded", "false");
+        if (partnerBtn && partnerBtn.classList) partnerBtn.classList.toggle("wallet-ops-peer-toggle--active", false);
+      }
+
       body.style.display = nextOpen ? "block" : "none";
       if (btn && btn.setAttribute) btn.setAttribute("aria-expanded", nextOpen ? "true" : "false");
       if (btn && btn.classList) btn.classList.toggle("wallet-ops-peer-toggle--active", nextOpen);
