@@ -1515,7 +1515,8 @@
       font-weight: 650;
       letter-spacing: -0.02em;
       font-family: var(--font-brand);
-      color: var(--text);
+      /* Must be !important: dark-mode global button styles may override this. */
+      color: var(--text) !important;
       box-shadow: none !important;
       min-height: 0 !important;
       outline: none !important;
