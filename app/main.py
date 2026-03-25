@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 from .auth import create_access_token, get_current_user, hash_password, require_admin, verify_password
 from .database import Base, engine, get_db
 from .models import (
+    AppSettings,
     DemoPaypalInvoice,
     FXQuote,
     KYCSubmission,
@@ -93,6 +95,75 @@ DEFAULT_ADMIN_EMAIL = "admin@globalwallet.app"
 DEFAULT_ADMIN_PASSWORD = "Admin123!"
 UPLOAD_DIR = "static/uploads"
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+class PlatformSettingsPatch(BaseModel):
+    payout_usd_ghs: float | None = Field(None, gt=0)
+    payout_usd_ngn: float | None = Field(None, gt=0)
+    mid_market_usd_ghs: float | None = Field(None, gt=0)
+    mid_market_usd_ngn: float | None = Field(None, gt=0)
+    fx_fee_percent: float | None = Field(None, ge=0, le=0.5)
+    paypal_commission_percent: float | None = Field(None, ge=0, le=0.5)
+
+
+def get_app_settings(db: Session) -> AppSettings:
+    row = db.query(AppSettings).filter(AppSettings.id == 1).first()
+    if row:
+        return row
+    row = AppSettings(
+        id=1,
+        payout_usd_ghs=PAYOUT_USD_GHS,
+        payout_usd_ngn=PAYOUT_USD_NGN,
+        mid_market_usd_ghs=MID_MARKET_USD_GHS,
+        mid_market_usd_ngn=MID_MARKET_USD_NGN,
+        fx_fee_percent=FX_FEE_PERCENT,
+        paypal_commission_percent=PAYPAL_DEMO_COMMISSION_PERCENT,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _fx_rates_for_db(db: Session, to_currency: str) -> tuple[float, float]:
+    s = get_app_settings(db)
+    u = (to_currency or "GHS").upper()
+    if u == "GHS":
+        return s.payout_usd_ghs, s.mid_market_usd_ghs
+    if u == "NGN":
+        return s.payout_usd_ngn, s.mid_market_usd_ngn
+    raise HTTPException(status_code=400, detail="Unsupported currency; use GHS or NGN")
+
+
+def _latest_kyc_submission_per_user(db: Session) -> dict[int, KYCSubmission]:
+    rows = db.query(KYCSubmission).order_by(KYCSubmission.user_id, KYCSubmission.created_at.desc()).all()
+    out: dict[int, KYCSubmission] = {}
+    for r in rows:
+        if r.user_id not in out:
+            out[r.user_id] = r
+    return out
+
+
+def _country_counts_from_latest(latest: dict[int, KYCSubmission], attr: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for _uid, sub in latest.items():
+        raw = getattr(sub, attr, None)
+        label = (str(raw).strip() if raw is not None else "") or "Unknown"
+        counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
+def _map_points_from_counts(counts: dict[str, int], centroids: dict[str, list[float]]) -> list[dict]:
+    pts: list[dict] = []
+    alias = {"usa": "united states", "us": "united states", "u.s.": "united states", "u.s.a.": "united states"}
+    for country, count in sorted(counts.items(), key=lambda x: -x[1]):
+        key = (country or "").strip().lower()
+        key = alias.get(key, key)
+        if key not in centroids:
+            continue
+        lat, lng = centroids[key]
+        pts.append({"country": country, "count": int(count), "lat": lat, "lng": lng})
+    return pts
 
 
 def normalize_email(email: str) -> str:
@@ -260,6 +331,23 @@ def pay_handle_from_profile(row: UserPublicProfile) -> str:
     return f"user{row.user_id:06d}@sahara.com"
 
 
+def recipient_pay_handle_from_s2s_ref(ref: str) -> str | None:
+    """Parse destination @sahara.com handle from S2S ledger reference."""
+    if not ref or not ref.startswith("S2S:"):
+        return None
+    try:
+        body = ref[4:]
+        if "->" not in body:
+            return None
+        after_arrow = body.split("->", 1)[1]
+        handle = after_arrow.split(":", 1)[0].strip().lower()
+        if handle.endswith("@sahara.com"):
+            return handle
+    except Exception:
+        pass
+    return None
+
+
 def ensure_user_public_profile(db: Session, user: User) -> UserPublicProfile:
     row = db.query(UserPublicProfile).filter(UserPublicProfile.user_id == user.id).first()
     if row:
@@ -293,21 +381,13 @@ def ensure_user_security(db: Session, user: User) -> UserSecurity:
     return row
 
 
-def _fx_rates_for(to_currency: str) -> tuple[float, float]:
-    u = (to_currency or "GHS").upper()
-    if u == "GHS":
-        return PAYOUT_USD_GHS, MID_MARKET_USD_GHS
-    if u == "NGN":
-        return PAYOUT_USD_NGN, MID_MARKET_USD_NGN
-    raise HTTPException(status_code=400, detail="Unsupported currency; use GHS or NGN")
-
-
 def wallet_summary(db: Session, user_id: int) -> dict:
+    s = get_app_settings(db)
     usd_wallet = get_or_create_wallet(db, user_id, "USD")
     ghs_wallet = get_or_create_wallet(db, user_id, "GHS")
     ngn_wallet = get_or_create_wallet(db, user_id, "NGN")
-    ghs_as_usd = ghs_wallet.balance / PAYOUT_USD_GHS if PAYOUT_USD_GHS else 0.0
-    ngn_as_usd = ngn_wallet.balance / PAYOUT_USD_NGN if PAYOUT_USD_NGN else 0.0
+    ghs_as_usd = ghs_wallet.balance / s.payout_usd_ghs if s.payout_usd_ghs else 0.0
+    ngn_as_usd = ngn_wallet.balance / s.payout_usd_ngn if s.payout_usd_ngn else 0.0
     total_usd_equivalent = usd_wallet.balance + ghs_as_usd + ngn_as_usd
     return {
         "usd_balance": round(usd_wallet.balance, 2),
@@ -316,8 +396,10 @@ def wallet_summary(db: Session, user_id: int) -> dict:
         "ghs_usd_equivalent": round(ghs_as_usd, 2),
         "ngn_usd_equivalent": round(ngn_as_usd, 2),
         "total_usd_equivalent": round(total_usd_equivalent, 2),
-        "display_rate_usd_to_ghs": PAYOUT_USD_GHS,
-        "display_rate_usd_to_ngn": PAYOUT_USD_NGN,
+        "display_rate_usd_to_ghs": s.payout_usd_ghs,
+        "display_rate_usd_to_ngn": s.payout_usd_ngn,
+        "mid_market_usd_to_ghs": s.mid_market_usd_ghs,
+        "mid_market_usd_to_ngn": s.mid_market_usd_ngn,
     }
 
 
@@ -354,6 +436,7 @@ def seed_admin():
             if not u.referral_code:
                 ensure_user_referral_code(db, u)
         normalize_stored_user_emails(db)
+        get_app_settings(db)
     finally:
         db.close()
 
@@ -678,12 +761,27 @@ def demo_paypal_receive(
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     usd_wallet = get_or_create_wallet(db, current_user.id, "USD")
-    commission_usd = round(amount_usd * PAYPAL_DEMO_COMMISSION_PERCENT, 2)
+    paypal_pct = get_app_settings(db).paypal_commission_percent
+    commission_usd = round(amount_usd * paypal_pct, 2)
     net_amount_usd = round(max(amount_usd - commission_usd, 0), 2)
 
     source_label = payer_email.strip() or "paypal-client@demo.test"
-    ref_note = note.strip() or "PayPal demo inbound payment"
-    inbound_reference = f"PAYPAL_DEMO:{source_label}:{ref_note}"
+    ref_note = (note.strip() or "PayPal demo inbound payment")[:500]
+    client_email = source_label if "@" in source_label else f"{source_label}@demo.sahara"
+    client_name = (client_email.split("@")[0].replace(".", " ").strip() or "PayPal client").title()
+    invoice_code = generate_demo_invoice_code()
+    demo_invoice = DemoPaypalInvoice(
+        user_id=current_user.id,
+        invoice_code=invoice_code,
+        client_name=client_name,
+        client_email=client_email.lower(),
+        amount_usd=round(amount_usd, 2),
+        note=ref_note,
+        status="paid",
+        paid_at=datetime.utcnow(),
+    )
+    db.add(demo_invoice)
+    inbound_reference = f"PAYPAL_DEMO:{invoice_code}:{source_label}"
 
     usd_wallet.balance += net_amount_usd
     post_ledger(db, current_user.id, "CREDIT_INBOUND", "USD", net_amount_usd, inbound_reference)
@@ -698,6 +796,7 @@ def demo_paypal_receive(
         "net_credited_usd": net_amount_usd,
         "payer_email": source_label,
         "reference": inbound_reference,
+        "invoice_code": invoice_code,
         "wallet_summary": wallet_summary(db, current_user.id),
     }
 
@@ -788,7 +887,8 @@ def pay_demo_paypal_invoice(
         raise HTTPException(status_code=400, detail="Invoice already paid")
 
     gross_usd = round(float(invoice.amount_usd), 2)
-    commission_usd = round(gross_usd * PAYPAL_DEMO_COMMISSION_PERCENT, 2)
+    paypal_pct = get_app_settings(db).paypal_commission_percent
+    commission_usd = round(gross_usd * paypal_pct, 2)
     net_amount_usd = round(max(gross_usd - commission_usd, 0), 2)
 
     usd_wallet = get_or_create_wallet(db, current_user.id, "USD")
@@ -818,14 +918,16 @@ def pay_demo_paypal_invoice(
 def create_quote(payload: FXQuoteRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if payload.amount_usd <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
-    rate = PAYOUT_USD_GHS
-    fee = round(payload.amount_usd * FX_FEE_PERCENT, 2)
-    net = max(payload.amount_usd - fee, 0)
-    target = round(net * rate, 2)
-    gross_target_mid_market = round(payload.amount_usd * MID_MARKET_USD_GHS, 2)
-    target_at_payout_rate = round(payload.amount_usd * PAYOUT_USD_GHS, 2)
-    spread_gain_ghs = round(target_at_payout_rate - target, 2)
-    operator_gross_revenue_ghs = round(gross_target_mid_market - target, 2)
+    s = get_app_settings(db)
+    rate = s.payout_usd_ghs
+    fee = round(payload.amount_usd * s.fx_fee_percent, 2)
+    # Payout rate is treated as the final payout.
+    # We charge FX fee on top of the USD amount, but the credited amount uses the full (gross) USD.
+    payout_target = round(payload.amount_usd * rate, 2)
+    mid_target = round(payload.amount_usd * s.mid_market_usd_ghs, 2)
+    target = payout_target
+    spread_gain_ghs = round(mid_target - payout_target, 2)
+    operator_gross_revenue_ghs = spread_gain_ghs
     quote = FXQuote(
         user_id=current_user.id,
         from_currency="USD",
@@ -841,7 +943,7 @@ def create_quote(payload: FXQuoteRequest, current_user: User = Depends(get_curre
     response = FXQuoteResponse(quote_id=quote.id, rate=rate, fee=fee, target_amount_ghs=target).model_dump()
     response.update(
         {
-            "mid_market_rate": MID_MARKET_USD_GHS,
+            "mid_market_rate": s.mid_market_usd_ghs,
             "spread_gain_ghs": spread_gain_ghs,
             "operator_gross_revenue_ghs": operator_gross_revenue_ghs,
         }
@@ -854,22 +956,61 @@ def fx_preview(
     amount_usd: float,
     to_currency: str = "GHS",
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     if amount_usd <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
     to_u = to_currency.strip().upper()
-    payout_rate, mid_rate = _fx_rates_for(to_u)
-    fee = round(amount_usd * FX_FEE_PERCENT, 2)
-    net = max(amount_usd - fee, 0.0)
-    target = round(net * payout_rate, 2)
+    payout_rate, mid_rate = _fx_rates_for_db(db, to_u)
+    s = get_app_settings(db)
+    fx_fee = round(amount_usd * s.fx_fee_percent, 2)
+    # Payout is final: credited amount uses full amount_usd (USD used for payout).
+    target = round(amount_usd * payout_rate, 2)
+    total_pay_usd = round(amount_usd + fx_fee, 2)
     sym = "₦" if to_u == "NGN" else "GH₵"
     return {
         "to_currency": to_u,
         "amount_usd": round(amount_usd, 2),
-        "fee_usd": fee,
-        "net_usd_after_fee": round(net, 2),
+        "fee_usd": fx_fee,
+        # Kept for backwards compatibility with the frontend.
+        "net_usd_after_fee": round(amount_usd, 2),
+        "total_usd_pay": total_pay_usd,
         "payout_rate": payout_rate,
         "you_receive": target,
+        "you_receive_label": sym,
+        "mid_market_rate": mid_rate,
+    }
+
+
+@app.get("/fx/preview-from-local")
+def fx_preview_from_local(
+    amount_local: float,
+    currency: str = "GHS",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """How much USD you pay (incl. fee) to receive amount_local in GHS or NGN."""
+    if amount_local <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    to_u = currency.strip().upper()
+    payout_rate, mid_rate = _fx_rates_for_db(db, to_u)
+    s = get_app_settings(db)
+    fx_fee_pct = s.fx_fee_percent
+    # Payout is final: local received is based on the full USD used for payout.
+    usd_used_for_payout = amount_local / payout_rate
+    fee = round(usd_used_for_payout * fx_fee_pct, 2)
+    total_pay_usd = round(usd_used_for_payout + fee, 2)
+    sym = "₦" if to_u == "NGN" else "GH₵"
+    return {
+        "currency": to_u,
+        "amount_local": round(amount_local, 2),
+        # Frontend uses this value to populate the USD input.
+        "you_pay_usd": round(usd_used_for_payout, 2),
+        "fee_usd": fee,
+        # Kept for backwards compatibility; under the new model it equals the USD used for payout.
+        "net_usd_after_fee": round(usd_used_for_payout, 2),
+        "total_usd_pay": total_pay_usd,
+        "payout_rate": payout_rate,
         "you_receive_label": sym,
         "mid_market_rate": mid_rate,
     }
@@ -882,22 +1023,23 @@ def fx_convert_direct(
     db: Session = Depends(get_db),
 ):
     to_u = (payload.to_currency or "GHS").strip().upper()
-    payout_rate, mid_rate = _fx_rates_for(to_u)
+    payout_rate, mid_rate = _fx_rates_for_db(db, to_u)
     amt = float(payload.amount_usd)
     if amt <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    fee = round(amt * FX_FEE_PERCENT, 2)
-    net = max(amt - fee, 0.0)
-    target = round(net * payout_rate, 2)
+    s = get_app_settings(db)
+    fee = round(amt * s.fx_fee_percent, 2)
+    target = round(amt * payout_rate, 2)
+    total_debit = round(amt + fee, 2)
 
     usd_wallet = get_or_create_wallet(db, current_user.id, "USD")
     tgt_wallet = get_or_create_wallet(db, current_user.id, to_u)
 
-    if usd_wallet.balance < amt:
-        raise HTTPException(status_code=400, detail="Insufficient USD balance")
+    if usd_wallet.balance < total_debit:
+        raise HTTPException(status_code=400, detail="Insufficient USD balance (need amount + fee)")
 
-    usd_wallet.balance -= amt
+    usd_wallet.balance -= total_debit
     tgt_wallet.balance += target
 
     quote = FXQuote(
@@ -935,10 +1077,11 @@ def convert_quote(payload: ConvertRequest, current_user: User = Depends(get_curr
     usd_wallet = get_or_create_wallet(db, current_user.id, "USD")
     ghs_wallet = get_or_create_wallet(db, current_user.id, "GHS")
 
-    if usd_wallet.balance < quote.source_amount:
-        raise HTTPException(status_code=400, detail="Insufficient USD balance")
+    total_debit = round(quote.source_amount + quote.fee, 2)
+    if usd_wallet.balance < total_debit:
+        raise HTTPException(status_code=400, detail="Insufficient USD balance (need amount + fee)")
 
-    usd_wallet.balance -= quote.source_amount
+    usd_wallet.balance -= total_debit
     ghs_wallet.balance += quote.target_amount
     quote.status = "executed"
 
@@ -947,12 +1090,17 @@ def convert_quote(payload: ConvertRequest, current_user: User = Depends(get_curr
     post_ledger(db, current_user.id, "FX_FEE", "USD", -quote.fee, f"FX#{quote.id}")
     db.commit()
 
-    source_mid_market_ghs = round(quote.source_amount * MID_MARKET_USD_GHS, 2)
+    s = get_app_settings(db)
+    source_mid_market_ghs = round(quote.source_amount * s.mid_market_usd_ghs, 2)
     operator_revenue_ghs = round(source_mid_market_ghs - quote.target_amount, 2)
     return {
         "message": "Conversion successful",
         "operator_revenue_ghs": operator_revenue_ghs,
-        "operator_revenue_usd_equivalent": round(operator_revenue_ghs / PAYOUT_USD_GHS, 2),
+        "operator_revenue_usd_equivalent": round(
+            operator_revenue_ghs / s.payout_usd_ghs, 2
+        )
+        if s.payout_usd_ghs
+        else 0.0,
         "wallet_summary": wallet_summary(db, current_user.id),
     }
 
@@ -1084,8 +1232,60 @@ def verify_sahara_recipient(
         "recipient_first_name": first_name,
         "recipient_last_name": last_name,
         "recipient_full_name": recipient_user.full_name,
+        "recipient_profile_photo_url": get_latest_profile_photo(db, recipient_user.id),
         "verified": True,
     }
+
+
+@app.get("/transfers/sahara/recent-recipients")
+def recent_sahara_recipients(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Distinct peer handles the user has sent USD to, most recent first (for Pay someone UI)."""
+    entries = (
+        db.query(LedgerEntry)
+        .filter(
+            LedgerEntry.user_id == current_user.id,
+            LedgerEntry.entry_type == "TRANSFER_OUT",
+            LedgerEntry.currency == "USD",
+        )
+        .order_by(LedgerEntry.created_at.desc())
+        .limit(120)
+        .all()
+    )
+    handle_to_uid: dict[str, int] = {}
+    for p in db.query(UserPublicProfile).all():
+        try:
+            ph = pay_handle_from_profile(p).lower()
+            if ph:
+                handle_to_uid[ph] = p.user_id
+        except Exception:
+            continue
+
+    seen: set[str] = set()
+    pending: list[tuple[str, datetime | None, int | None]] = []
+    for e in entries:
+        h = recipient_pay_handle_from_s2s_ref(e.reference or "")
+        if not h or h in seen:
+            continue
+        seen.add(h)
+        pending.append((h, e.created_at, handle_to_uid.get(h)))
+        if len(pending) >= 15:
+            break
+
+    uids = {uid for _, _, uid in pending if uid}
+    id_to_user = {u.id: u for u in db.query(User).filter(User.id.in_(uids)).all()} if uids else {}
+
+    recipients = []
+    for pay_handle, ts, uid in pending:
+        ru = id_to_user.get(uid) if uid else None
+        full_name = (ru.full_name or "").strip() if ru else ""
+        recipients.append(
+            {
+                "pay_handle": pay_handle,
+                "full_name": full_name,
+                "last_sent_at": ts.isoformat() if ts else None,
+            }
+        )
+    return {"recipients": recipients}
 
 
 @app.get("/wallet/summary")
@@ -1097,8 +1297,14 @@ def get_wallet_summary(current_user: User = Depends(get_current_user), db: Sessi
 def submit_kyc(payload: KYCSubmissionRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not payload.passport_number.strip():
         raise HTTPException(status_code=400, detail="passport_number is required")
+    if not payload.passport_country.strip():
+        raise HTTPException(status_code=400, detail="passport_country (document country) is required")
+    if not payload.residence_country.strip():
+        raise HTTPException(status_code=400, detail="residence_country is required")
+    if not payload.current_city.strip():
+        raise HTTPException(status_code=400, detail="current_city is required")
     if not payload.passport_image_url.strip():
-        raise HTTPException(status_code=400, detail="passport_image_url is required")
+        raise HTTPException(status_code=400, detail="passport_image_url is required — upload your ID document photo")
     if not payload.face_verification_image_url.strip():
         raise HTTPException(
             status_code=400,
@@ -1206,7 +1412,12 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
     for e in ledger:
         summary = f"Activity on your wallet ({e.entry_type})."
         if e.entry_type == "CREDIT_INBOUND":
-            summary = f"You received {round(e.amount, 2)} {e.currency} from {e.reference}."
+            ref = (e.reference or "").strip()
+            # PayPal demo/invoice entries use reference prefixes; show a user-friendly subscription message.
+            if ref.startswith("PAYPAL_DEMO:") or ref.startswith("PAYPAL_INVOICE:"):
+                summary = f"You received a PayPal subscription payment of {round(e.amount, 2)} {e.currency}."
+            else:
+                summary = f"You received {round(e.amount, 2)} {e.currency} from {e.reference}."
         elif e.entry_type == "FX_CREDIT":
             summary = f"You converted funds and got credited {round(e.amount, 2)} {e.currency}."
         elif e.entry_type == "FX_DEBIT":
@@ -1214,11 +1425,11 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
         elif e.entry_type == "WITHDRAWAL_DEBIT":
             summary = f"You initiated a withdrawal of {abs(round(e.amount, 2))} {e.currency}."
         elif e.entry_type == "FX_FEE":
-            summary = f"A conversion fee of {abs(round(e.amount, 2))} {e.currency} was charged."
+            summary = "Conversion fee (FX)."
         elif e.entry_type == "PAYPAL_COMMISSION":
-            summary = f"Sahara charged a PayPal processing commission of {abs(round(e.amount, 2))} {e.currency}."
+            summary = "PayPal subscription fee."
         elif e.entry_type == "PAYPAL_INVOICE_PAID":
-            summary = f"Your PayPal invoice was marked paid for {round(e.amount, 2)} {e.currency} (gross)."
+            summary = f"You received a PayPal subscription payment of {round(e.amount, 2)} {e.currency}."
         elif e.entry_type == "TRANSFER_OUT":
             recipient_name = "another Sahara user"
             if e.reference and e.reference.startswith("S2S:"):
@@ -1249,6 +1460,7 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
         elif e.entry_type == "REFERRAL_BONUS":
             summary = f"Referral bonus: you earned {round(e.amount, 2)} {e.currency} when your invite reached the qualifying activity."
         ref = (e.reference or "")[:512]
+        is_fee = e.entry_type in ("FX_FEE", "PAYPAL_COMMISSION")
         events.append(
             {
                 "timestamp": e.created_at,
@@ -1258,6 +1470,7 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
                 "amount": round(e.amount, 2),
                 "currency": e.currency,
                 "reference": ref,
+                "is_fee": is_fee,
             }
         )
 
@@ -1279,6 +1492,7 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
                 "destination_type": w.destination_type,
                 "destination_account_last4": (w.destination_account[-4:] if w.destination_account else None),
                 "status": w.status,
+                "is_fee": False,
             }
         )
 
@@ -1286,36 +1500,98 @@ def my_activity(current_user: User = Depends(get_current_user), db: Session = De
     return events[:80]
 
 
+def _admin_user_row(db: Session, u: User) -> dict:
+    latest_kyc = (
+        db.query(KYCSubmission)
+        .filter(KYCSubmission.user_id == u.id)
+        .order_by(KYCSubmission.created_at.desc())
+        .first()
+    )
+    return {
+        "id": u.id,
+        "email": u.email,
+        "full_name": u.full_name,
+        "kyc_status": u.kyc_status,
+        "is_admin": u.is_admin,
+        "passport_country": latest_kyc.passport_country if latest_kyc else None,
+        "residence_country": latest_kyc.residence_country if latest_kyc else None,
+        "current_city": latest_kyc.current_city if latest_kyc else None,
+        "passport_number": latest_kyc.passport_number if latest_kyc else None,
+        "latest_submission_id": latest_kyc.id if latest_kyc else None,
+        "latest_submission_status": latest_kyc.status if latest_kyc else None,
+        "profile_photo_url": get_latest_profile_photo(db, u.id),
+        "password_visibility": "Not available (stored as secure hash only)",
+        "created_at": u.created_at,
+    }
+
+
 @app.get("/admin/users")
-def admin_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    users = db.query(User).order_by(User.created_at.desc()).all()
-    result = []
-    for u in users:
-        latest_kyc = (
-            db.query(KYCSubmission)
-            .filter(KYCSubmission.user_id == u.id)
-            .order_by(KYCSubmission.created_at.desc())
-            .first()
-        )
-        result.append(
-            {
-                "id": u.id,
-                "email": u.email,
-                "full_name": u.full_name,
-                "kyc_status": u.kyc_status,
-                "is_admin": u.is_admin,
-                "passport_country": latest_kyc.passport_country if latest_kyc else None,
-                "residence_country": latest_kyc.residence_country if latest_kyc else None,
-                "current_city": latest_kyc.current_city if latest_kyc else None,
-                "passport_number": latest_kyc.passport_number if latest_kyc else None,
-                "latest_submission_id": latest_kyc.id if latest_kyc else None,
-                "latest_submission_status": latest_kyc.status if latest_kyc else None,
-                "profile_photo_url": get_latest_profile_photo(db, u.id),
-                "password_visibility": "Not available (stored as secure hash only)",
-                "created_at": u.created_at,
-            }
-        )
-    return result
+def admin_users(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    limit: int | None = None,
+    offset: int | None = None,
+    sort: str = "created_desc",
+):
+    """List users. Use limit/offset for pagination (e.g. limit=100&offset=0). Omit both for full list (small DBs only)."""
+    q = db.query(User)
+    sort_key = (sort or "created_desc").strip().lower()
+    if sort_key == "email_asc":
+        q = q.order_by(User.email.asc())
+    elif sort_key == "name_asc":
+        q = q.order_by(User.full_name.asc())
+    else:
+        q = q.order_by(User.created_at.desc())
+
+    if limit is None and offset is None:
+        users = q.all()
+        return [_admin_user_row(db, u) for u in users]
+
+    lim = min(max(int(limit or 100), 1), 2000)
+    off = max(int(offset or 0), 0)
+    total = q.count()
+    users = q.offset(off).limit(lim).all()
+    return {
+        "total": total,
+        "limit": lim,
+        "offset": off,
+        "sort": sort_key,
+        "users": [_admin_user_row(db, u) for u in users],
+    }
+
+
+def _platform_settings_response(s: AppSettings) -> dict:
+    return {
+        "payout_usd_ghs": s.payout_usd_ghs,
+        "payout_usd_ngn": s.payout_usd_ngn,
+        "mid_market_usd_ghs": s.mid_market_usd_ghs,
+        "mid_market_usd_ngn": s.mid_market_usd_ngn,
+        "fx_fee_percent": s.fx_fee_percent,
+        "paypal_commission_percent": s.paypal_commission_percent,
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+    }
+
+
+@app.get("/admin/platform-settings")
+def admin_get_platform_settings(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return _platform_settings_response(get_app_settings(db))
+
+
+@app.patch("/admin/platform-settings")
+def admin_patch_platform_settings(
+    payload: PlatformSettingsPatch,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    s = get_app_settings(db)
+    data = payload.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(s, k, float(v))
+    s.updated_at = datetime.utcnow()
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return _platform_settings_response(s)
 
 
 @app.patch("/admin/users/{user_id}/kyc")
@@ -1431,6 +1707,16 @@ def admin_stats(_: User = Depends(require_admin), db: Session = Depends(get_db))
     ).scalar() or 0.0
     processing_withdrawals = db.query(func.count(Withdrawal.id)).filter(Withdrawal.status == "processing").scalar() or 0
 
+    fee_rows = (
+        db.query(LedgerEntry)
+        .filter(
+            LedgerEntry.entry_type.in_(["FX_FEE", "PAYPAL_COMMISSION"]),
+            LedgerEntry.currency == "USD",
+        )
+        .all()
+    )
+    fee_revenue_usd = round(sum(abs(float(x.amount)) for x in fee_rows), 2)
+
     return {
         "total_users": total_users,
         "pending_kyc": pending_kyc,
@@ -1440,6 +1726,7 @@ def admin_stats(_: User = Depends(require_admin), db: Session = Depends(get_db))
         "processing_withdrawals": processing_withdrawals,
         "total_usd_in": round(float(total_usd_in), 2),
         "total_withdrawn_ghs": round(float(total_withdrawn_ghs), 2),
+        "fee_revenue_usd": fee_revenue_usd,
     }
 
 
@@ -1593,12 +1880,10 @@ def admin_analytics(_: User = Depends(require_admin), db: Session = Depends(get_
         .order_by(func.date(User.created_at))
         .all()
     )
-    country_rows = (
-        db.query(KYCSubmission.residence_country, func.count(KYCSubmission.id).label("count"))
-        .group_by(KYCSubmission.residence_country)
-        .order_by(func.count(KYCSubmission.id).desc())
-        .all()
-    )
+
+    latest = _latest_kyc_submission_per_user(db)
+    res_counts = _country_counts_from_latest(latest, "residence_country")
+    doc_counts = _country_counts_from_latest(latest, "passport_country")
 
     country_centroids = {
         "ghana": [7.9465, -1.0232],
@@ -1608,19 +1893,35 @@ def admin_analytics(_: User = Depends(require_admin), db: Session = Depends(get_
         "south africa": [-30.5595, 22.9375],
         "uk": [55.3781, -3.4360],
         "united kingdom": [55.3781, -3.4360],
+        "canada": [56.1304, -106.3468],
+        "india": [20.5937, 78.9629],
+        "france": [46.2276, 2.2137],
+        "germany": [51.1657, 10.4515],
+        "mexico": [23.6345, -102.5528],
+        "brazil": [-14.235, -51.9253],
+        "australia": [-25.2744, 133.7751],
+        "egypt": [26.8206, 30.8025],
+        "morocco": [31.7917, -7.0926],
+        "uae": [23.4241, 53.8478],
+        "united arab emirates": [23.4241, 53.8478],
+        "singapore": [1.3521, 103.8198],
+        "japan": [36.2048, 138.2529],
+        "china": [35.8617, 104.1954],
     }
 
-    map_points = []
-    for country, count in country_rows:
-        key = (country or "").strip().lower()
-        if key in country_centroids:
-            lat, lng = country_centroids[key]
-            map_points.append({"country": country, "count": int(count), "lat": lat, "lng": lng})
+    residence_list = [{"country": c, "count": n} for c, n in sorted(res_counts.items(), key=lambda x: -x[1])]
+    document_list = [{"country": c, "count": n} for c, n in sorted(doc_counts.items(), key=lambda x: -x[1])]
+    map_residence = _map_points_from_counts(res_counts, country_centroids)
+    map_document = _map_points_from_counts(doc_counts, country_centroids)
 
     return {
         "signins_by_day": [{"day": str(r.day), "count": int(r.count)} for r in login_rows],
         "transactions_by_day": [{"day": str(r.day), "count": int(r.count)} for r in tx_rows],
         "users_by_day": [{"day": str(r.day), "count": int(r.count)} for r in user_rows],
-        "users_by_country": [{"country": r.residence_country or "Unknown", "count": int(r.count)} for r in country_rows],
-        "map_points": map_points,
+        "users_by_country": residence_list,
+        "users_by_residence_country": residence_list,
+        "users_by_document_country": document_list,
+        "map_points": map_residence,
+        "map_points_residence": map_residence,
+        "map_points_document": map_document,
     }

@@ -145,6 +145,21 @@ class ReferralProgress(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class AppSettings(Base):
+    """Singleton row (id=1): FX payout/mid rates, FX fee %, PayPal demo commission %."""
+
+
+    __tablename__ = "app_settings"
+    id = Column(Integer, primary_key=True)
+    payout_usd_ghs = Column(Float, nullable=False, default=14.25)
+    payout_usd_ngn = Column(Float, nullable=False, default=1550.0)
+    mid_market_usd_ghs = Column(Float, nullable=False, default=14.40)
+    mid_market_usd_ngn = Column(Float, nullable=False, default=1580.0)
+    fx_fee_percent = Column(Float, nullable=False, default=0.015)
+    paypal_commission_percent = Column(Float, nullable=False, default=0.05)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class DemoPaypalInvoice(Base):
     __tablename__ = "demo_paypal_invoices"
     id = Column(Integer, primary_key=True, index=True)

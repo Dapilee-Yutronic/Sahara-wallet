@@ -7,6 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Sahara" />
+  <!-- Set to your public Sahara app URL so payment-request and referral links always point home (e.g. https://app.sahara.com). Empty = use this page’s origin. -->
+  <meta name="sahara-app-url" content="" />
   <link rel="manifest" href="/static/manifest.webmanifest" />
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/static/icon.svg" />
@@ -60,6 +62,15 @@
       overscroll-behavior: none;
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      scrollbar-gutter: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    html::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
 
     body {
@@ -78,6 +89,14 @@
       -moz-osx-font-smoothing: grayscale;
       overscroll-behavior-y: none;
       touch-action: manipulation;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    body::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
 
     /* Sign-in / register: stable full-screen frame (no white gaps, no stretchy zoom feel) */
@@ -97,6 +116,75 @@
     body.gw-auth-screen .grid {
       flex: 1 0 auto;
       align-content: start;
+    }
+
+    /* Logged out: only sign-in or create-account card (JS toggles which one) */
+    body.gw-auth-screen .grid > .card:not(#card_login):not(#card_register) {
+      display: none !important;
+    }
+
+    .admin-feed-list {
+      margin-top: 14px;
+      max-height: min(360px, 50vh);
+      overflow-y: auto;
+      border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: color-mix(in srgb, var(--card) 96%, var(--border) 4%);
+    }
+
+    .admin-feed-row {
+      padding: 10px 8px;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      font-size: 13px;
+    }
+
+    .admin-feed-row:last-child {
+      border-bottom: none;
+    }
+
+    .admin-feed-ts {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .admin-feed-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .admin-feed-msg {
+      color: var(--text);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .admin-feed-empty,
+    .admin-feed-loading {
+      margin: 0;
+      padding: 12px 8px;
+    }
+
+    .admin-dashboard-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .admin-advanced summary {
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 14px;
     }
 
     .wrap {
@@ -139,6 +227,187 @@
 
     body.gw-logged-in .topbar-right {
       display: none !important;
+    }
+
+    body.gw-logged-in .topbar {
+      overflow: visible;
+    }
+
+    .activity-bell-wrap {
+      display: none;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 5;
+    }
+
+    #card_greeting {
+      overflow: visible;
+      position: relative;
+      z-index: 4;
+    }
+
+    #card_greeting .hero-greeting {
+      overflow: visible;
+    }
+
+    .greet-right {
+      flex-shrink: 0;
+      align-self: flex-start;
+      padding-top: 2px;
+    }
+
+    .topbar-notification-wrap {
+      position: relative;
+    }
+
+    .topbar-bell-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--card) 82%, var(--border) 18%);
+      color: var(--text);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .topbar-bell-btn:hover {
+      background: color-mix(in srgb, var(--card) 72%, var(--border) 28%);
+      border-color: var(--border);
+    }
+
+    .topbar-bell-btn:active {
+      background: color-mix(in srgb, var(--card) 68%, var(--border) 32%);
+    }
+
+    .topbar-bell-btn svg {
+      width: 22px;
+      height: 22px;
+      opacity: 0.92;
+    }
+
+    .topbar-bell-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 750;
+      line-height: 16px;
+      text-align: center;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    [data-theme="dark"] .topbar-bell-badge {
+      background: #f87171;
+      color: #1a0a0a;
+    }
+
+    .topbar-activity-dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: min(340px, calc(100vw - 32px));
+      max-height: min(70vh, 420px);
+      display: flex;
+      flex-direction: column;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+      z-index: 80;
+      overflow: hidden;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-6px);
+      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+    }
+
+    .topbar-activity-dropdown.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    [data-theme="dark"] .topbar-activity-dropdown {
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    .topbar-activity-dropdown-head {
+      padding: 12px 14px 8px;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-activity-list {
+      padding: 8px 10px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .topbar-activity-list::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    .topbar-activity-line {
+      padding: 10px 8px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--text);
+    }
+
+    .topbar-activity-line + .topbar-activity-line {
+      border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+    }
+
+    .topbar-activity-line-dt {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .topbar-activity-msg {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .topbar-activity-dropdown-footer {
+      padding: 10px 12px 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .topbar-activity-dropdown-footer button {
+      width: 100%;
+      margin: 0;
     }
 
     .topbar-right {
@@ -329,6 +598,11 @@
     .span-8 { grid-column: span 8; }
     .span-12 { grid-column: span 12; }
 
+    /* Half-width pair with Payment Methods — keeps grid from overflowing */
+    #card_wallet_ops {
+      min-width: 0;
+    }
+
     .card h3 {
       margin: 0 0 12px;
       font-size: 18px;
@@ -379,6 +653,401 @@
     .referral-demo-box code {
       font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
       font-size: 13px;
+    }
+
+    .referral-snapshot-row {
+      margin: 0 0 14px;
+      padding: 0;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 96%, var(--border) 4%);
+      overflow: hidden;
+    }
+
+    .referral-snapshot-hit {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      margin: 0;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .referral-snapshot-hit:hover {
+      background: color-mix(in srgb, var(--card) 88%, var(--border) 12%);
+    }
+
+    .referral-snapshot-hit:active {
+      background: color-mix(in srgb, var(--card) 82%, var(--border) 18%);
+    }
+
+    .referral-gift-pill {
+      flex-shrink: 0;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      padding: 5px 7px;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, var(--border) 85%, var(--muted) 15%);
+      background: color-mix(in srgb, var(--card) 92%, var(--border) 8%);
+    }
+
+    .referral-gift-icon {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .referral-gift-amount {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 12px;
+      margin-top: 1px;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .referral-snapshot-copy {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .referral-snapshot-title {
+      font-family: var(--font-brand);
+      font-weight: 650;
+      font-size: 14px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    .referral-snapshot-hint {
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .referral-snapshot-chevron {
+      flex-shrink: 0;
+      font-size: 22px;
+      font-weight: 300;
+      line-height: 1;
+      color: var(--muted);
+      margin-left: 2px;
+    }
+
+    [data-theme="dark"] .referral-snapshot-row {
+      border-color: var(--border);
+      background: color-mix(in srgb, var(--card) 97%, var(--border) 3%);
+    }
+
+    [data-theme="dark"] .referral-snapshot-hit:hover {
+      background: color-mix(in srgb, var(--card) 90%, var(--border) 10%);
+    }
+
+    [data-theme="dark"] .referral-gift-pill {
+      border-color: var(--border);
+      background: color-mix(in srgb, var(--card) 94%, var(--border) 6%);
+    }
+
+    .home-activity-preview-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 8px;
+    }
+
+    .home-activity-preview-line {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .home-activity-preview-line:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .home-activity-preview-dt {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .home-activity-preview-msg {
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    .home-activity-preview-empty,
+    .home-activity-preview-loading {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 8px 0 4px;
+    }
+
+    .home-activity-preview-footer {
+      margin-top: 10px;
+    }
+
+    .home-activity-preview-footer button {
+      width: 100%;
+    }
+
+    .wallet-snapshot-tiles {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 6px;
+      align-items: stretch;
+    }
+
+    .wallet-snapshot-tile {
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 94%, var(--primary) 6%);
+      padding: 12px 10px;
+      min-height: 132px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: stretch;
+      box-sizing: border-box;
+      /* Balance text scales to tile width (half the row) — avoids phone overflow */
+      container-type: inline-size;
+      container-name: wallet-balance-tile;
+    }
+
+    /* Same tile height in the row; push amounts to the bottom so USD & local line up */
+    .wallet-snapshot-tile-usd {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wallet-snapshot-tile-usd .wallet-snapshot-usd-block {
+      margin-top: auto;
+      width: 100%;
+    }
+
+    .wallet-snapshot-tile-local .wallet-snapshot-local {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+
+    .wallet-snapshot-tile-local .wallet-snapshot-local .metric {
+      margin-top: auto;
+    }
+
+    [data-theme="dark"] .wallet-snapshot-tile {
+      background: color-mix(in srgb, var(--card) 92%, var(--text) 8%);
+      border-color: var(--border);
+    }
+
+    .wallet-snapshot-tile .wallet-snapshot-usd-block {
+      margin-left: 0;
+      margin-right: 0;
+      margin-bottom: 0;
+    }
+
+    .wallet-snapshot-tile .wallet-snapshot-local {
+      margin: 0;
+      padding: 0;
+      border: none;
+    }
+
+    .wallet-snapshot-tile .metric {
+      border: none;
+      background: transparent;
+      padding: 0;
+      box-shadow: none;
+      min-width: 0;
+      width: 100%;
+    }
+
+    [data-theme="dark"] .wallet-snapshot-tile .metric {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+
+    /* Fintech-style balances: labels quiet, numerals dominant */
+    #card_wallet_snapshot .wallet-snapshot-tile .metric .label {
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    #card_wallet_snapshot .wallet-snapshot-tile .metric .value {
+      font-family: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+      font-size: clamp(23px, 4.2vw, 32px);
+      font-weight: 730;
+      line-height: 1.1;
+      letter-spacing: -0.035em;
+      font-variant-numeric: tabular-nums lining-nums;
+      font-feature-settings: "tnum" 1, "lnum" 1;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+      min-width: 0;
+      color: var(--text);
+    }
+
+    #card_wallet_snapshot > h3 {
+      font-size: 20px;
+      letter-spacing: -0.03em;
+    }
+
+    .wallet-snapshot-tile .local-picker-row {
+      flex-shrink: 0;
+      margin-bottom: 0;
+    }
+
+    .wallet-snapshot-tile .wallet-snapshot-local select {
+      max-width: 100%;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+
+    .wallet-snapshot-referral-box {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .wallet-snapshot-referral-hit {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      width: auto;
+      min-width: 92px;
+      min-height: 74px;
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--border) 82%, var(--accent) 18%);
+      background: color-mix(in srgb, var(--card) 95%, var(--border) 5%);
+      font: inherit;
+      color: inherit;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
+
+    .wallet-snapshot-referral-hit:focus:not(:focus-visible) {
+      outline: none;
+    }
+
+    .wallet-snapshot-referral-hit:hover {
+      border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+      background: color-mix(in srgb, var(--card) 90%, var(--accent) 10%);
+      transform: translateY(-1px);
+    }
+
+    [data-theme="dark"] .wallet-snapshot-referral-hit {
+      background: color-mix(in srgb, var(--card) 93%, var(--border) 7%);
+    }
+
+    .wallet-snapshot-referral-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .wallet-snapshot-referral-kicker {
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    .wallet-snapshot-usd-block {
+      margin-bottom: 14px;
+    }
+
+    .wallet-snapshot-local {
+      margin-top: 4px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .wallet-snapshot-tile .wallet-snapshot-local label {
+      font-size: 11px;
+    }
+
+    .wallet-snapshot-local .local-picker-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .wallet-snapshot-local label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .wallet-snapshot-local select {
+      max-width: 220px;
+    }
+
+    .kyc-req {
+      color: #b91c1c;
+      font-weight: 800;
+    }
+
+    [data-theme="dark"] .kyc-req {
+      color: #fca5a5;
+    }
+
+    .kyc-form-error {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, #b91c1c 35%, var(--border));
+      background: color-mix(in srgb, #fef2f2 88%, var(--card) 12%);
+      color: #7f1d1d;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    [data-theme="dark"] .kyc-form-error {
+      border-color: color-mix(in srgb, #fca5a5 40%, var(--border));
+      background: color-mix(in srgb, #450a0a 35%, var(--card) 65%);
+      color: #fecaca;
+    }
+
+    .kyc-upload-status.kyc-upload-ok {
+      color: var(--success);
+      font-weight: 600;
     }
 
     .row {
@@ -520,6 +1189,30 @@
       color: #fca5a5;
     }
 
+    .wd-success-banner {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, var(--border) 70%, #15803d 30%);
+      background: color-mix(in srgb, var(--card) 88%, #bbf7d0 12%);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #166534;
+    }
+
+    [data-theme="dark"] .wd-success-banner {
+      color: #bbf7d0;
+      border-color: color-mix(in srgb, var(--border) 50%, #22c55e 50%);
+      background: color-mix(in srgb, var(--card) 85%, #14532d 15%);
+    }
+
+    #btn_withdraw_funds.btn-withdraw-submitted {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
     .fx-preview-box {
       margin-top: 10px;
       padding: 10px 12px;
@@ -534,6 +1227,580 @@
     .fx-preview-box .muted {
       color: var(--muted);
       font-size: 12px;
+    }
+
+    .wallet-ops-fx-details {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--card) 94%, var(--border) 6%);
+      overflow: hidden;
+    }
+
+    .wallet-ops-fx-details summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      font-weight: 650;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      user-select: none;
+    }
+
+    .wallet-ops-fx-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .wallet-ops-fx-details .wallet-ops-tab-hint {
+      font-weight: 500;
+      font-size: 12px;
+      color: var(--muted);
+      flex: 1 1 auto;
+      text-align: right;
+      min-width: 0;
+    }
+
+    .wallet-ops-fx-details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .wallet-ops-fx-inner {
+      padding: 12px 14px 14px;
+    }
+
+    .wallet-ops-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    details.wallet-ops-category {
+      --cat-accent: var(--border);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--cat-accent);
+      border-radius: 14px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--card) 98%, var(--border) 2%);
+    }
+
+    details.wallet-ops-category > summary {
+      list-style: none;
+    }
+
+    details.wallet-ops-category > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .wallet-ops-cat-receive {
+      --cat-accent: #0d9488;
+    }
+
+    .wallet-ops-cat-withdraw {
+      --cat-accent: #ea580c;
+    }
+
+    .wallet-ops-cat-people {
+      --cat-accent: #2563eb;
+    }
+
+    [data-theme="dark"] .wallet-ops-cat-receive {
+      --cat-accent: #2dd4bf;
+    }
+
+    [data-theme="dark"] .wallet-ops-cat-withdraw {
+      --cat-accent: #fb923c;
+    }
+
+    [data-theme="dark"] .wallet-ops-cat-people {
+      --cat-accent: #60a5fa;
+    }
+
+    .wallet-ops-category-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      background: color-mix(in srgb, var(--card) 88%, var(--cat-accent) 12%);
+      border-bottom: 1px solid transparent;
+    }
+
+    details.wallet-ops-category[open] > .wallet-ops-category-summary {
+      border-bottom-color: var(--border);
+    }
+
+    .wallet-ops-category-summary:focus {
+      outline: none;
+    }
+
+    .wallet-ops-category-summary:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--accent) 55%, var(--border) 45%);
+      outline-offset: 2px;
+    }
+
+    .wallet-ops-summary-lead {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      text-align: left;
+    }
+
+    .wallet-ops-category-eyebrow {
+      display: block;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .wallet-ops-category-title {
+      font-size: 16px;
+      font-weight: 750;
+      letter-spacing: -0.03em;
+      font-family: var(--font-brand);
+      color: var(--text);
+      line-height: 1.25;
+    }
+
+    .wallet-ops-category-chevron {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg);
+      transition: transform 0.2s ease;
+      margin-bottom: 4px;
+    }
+
+    details.wallet-ops-category[open] .wallet-ops-category-chevron {
+      transform: rotate(225deg);
+      margin-bottom: -2px;
+    }
+
+    .wallet-ops-category-desc {
+      margin: 0 0 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 52ch;
+    }
+
+    .wallet-ops-category-body {
+      padding: 14px 16px 16px;
+    }
+
+    .wallet-ops-fx-block {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px 14px;
+      background: color-mix(in srgb, var(--card) 94%, var(--border) 6%);
+    }
+
+    .wallet-ops-subblock {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed color-mix(in srgb, var(--border) 80%, var(--muted) 20%);
+    }
+
+    .wallet-ops-subblock:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .wallet-ops-subblock-label {
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+
+    .wallet-ops-people-intro {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .wallet-ops-people-grid {
+      display: grid;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    @media (min-width: 720px) {
+      .wallet-ops-people-grid {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+      }
+    }
+
+    .wallet-ops-panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 14px 16px;
+      background: color-mix(in srgb, var(--card) 97%, var(--border) 3%);
+    }
+
+    .wallet-ops-panel-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      font-family: var(--font-brand);
+    }
+
+    .wallet-ops-panel .sub {
+      margin-top: 0;
+    }
+
+    .wallet-ops-s2s-hint {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .wallet-ops-s2s-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .wallet-ops-s2s-fields-row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .wallet-ops-s2s-fields-row2 input {
+      min-width: 0;
+    }
+
+    @media (max-width: 400px) {
+      .wallet-ops-s2s-fields-row2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .wallet-ops-s2s-full-btn {
+      width: 100%;
+      margin-top: 2px;
+      box-sizing: border-box;
+    }
+
+    .wallet-ops-peer-toggle {
+      width: 100%;
+      text-align: left;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin: 0 0 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      font-family: var(--font-brand);
+      color: var(--text);
+      box-shadow: none !important;
+      min-height: 0 !important;
+      outline: none !important;
+    }
+
+    .wallet-ops-peer-toggle:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+      border-radius: 10px;
+    }
+
+    .wallet-ops-peer-panel-body {
+      margin-top: 0;
+    }
+
+    .s2s-recent-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .s2s-recent-row label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .s2s-recent-row select {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .s2s-lookup-status-line {
+      margin: 8px 0 0;
+      font-size: 13px;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .s2s-lookup-status-line.is-error {
+      color: #b91c1c;
+      font-weight: 600;
+    }
+
+    [data-theme="dark"] .s2s-lookup-status-line.is-error {
+      color: #fca5a5;
+    }
+
+    .s2s-peer-preview {
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--border) 85%, var(--muted) 15%);
+      background: color-mix(in srgb, var(--card) 94%, var(--border) 6%);
+    }
+
+    .s2s-peer-preview.s2s-peer-preview-active {
+      border-style: solid;
+      border-color: var(--border);
+    }
+
+    .s2s-peer-preview-inner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .s2s-peer-avatar-wrap {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+
+    .s2s-peer-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      display: none;
+    }
+
+    .s2s-peer-placeholder {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: color-mix(in srgb, var(--card) 75%, var(--border) 25%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-brand);
+      font-weight: 800;
+      font-size: 20px;
+      color: var(--muted);
+    }
+
+    .s2s-peer-name {
+      font-weight: 650;
+      font-size: 15px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .s2s-peer-handle {
+      font-size: 12px;
+      margin-top: 2px;
+      overflow-wrap: anywhere;
+    }
+
+    .pr-self-preview {
+      margin-bottom: 12px;
+    }
+
+    .wallet-ops-primary-btn {
+      width: 100%;
+      margin-top: 10px;
+      min-height: 48px;
+      font-weight: 650;
+    }
+
+    /* Smaller actions for add-funds / withdraw (full-width primary stays default for Send money). */
+    button.wallet-ops-btn-compact {
+      justify-self: start;
+      width: auto !important;
+      min-height: 34px;
+      padding: 6px 14px !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      margin-top: 8px;
+      margin-right: 0;
+      border-radius: 10px;
+    }
+
+    .wallet-ops-primary-btn.wallet-ops-btn-compact {
+      min-height: 36px;
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    .wallet-ops-primary-btn:disabled,
+    button.wallet-ops-primary-btn.btn-busy:disabled {
+      opacity: 0.72;
+      cursor: not-allowed;
+    }
+
+    button.btn-tapped-feedback {
+      animation: wallet-ops-btn-tap-kf 0.22s ease-out;
+    }
+
+    @keyframes wallet-ops-btn-tap-kf {
+      0% {
+        transform: scale(0.98);
+        opacity: 0.88;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .wallet-ops-wd-account-row {
+      grid-template-columns: 1fr !important;
+    }
+
+    .wallet-ops-wd-account-row input {
+      width: 100%;
+    }
+
+    .wallet-ops-launcher {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .wallet-ops-open-btn {
+      width: 100%;
+      min-height: 48px;
+      font-weight: 600;
+    }
+
+    .wallet-ops-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1240;
+      background: rgba(0, 0, 0, 0.48);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .wallet-ops-sheet-backdrop.wallet-ops-sheet-open {
+      display: flex;
+    }
+
+    .wallet-ops-sheet {
+      width: 100%;
+      max-width: 560px;
+      max-height: min(92vh, 900px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    }
+
+    .wallet-ops-sheet-grab {
+      width: 40px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--border);
+      margin: 10px auto 6px;
+    }
+
+    .wallet-ops-sheet-title {
+      margin: 0 16px 10px;
+      font-size: 18px;
+    }
+
+    .wallet-ops-sheet-scroll {
+      overflow-y: auto;
+      padding: 0 16px 12px;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .wallet-ops-sheet-scroll::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    .wallet-ops-sheet-close {
+      margin: 0 16px 8px;
+      width: calc(100% - 32px);
+    }
+
+    .fx-dual-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: end;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 520px) {
+      .fx-dual-grid {
+        grid-template-columns: 1fr;
+      }
+      .fx-dual-swap {
+        text-align: center;
+        padding: 4px 0;
+      }
+    }
+
+    .fx-dual-swap {
+      font-size: 20px;
+      color: var(--muted);
+      padding-bottom: 8px;
+    }
+
+    .fx-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .fx-field input {
+      width: 100%;
+    }
+
+    .activity-receipt-row {
+      margin-top: 8px;
+    }
+
+    .activity-receipt-row button {
+      font-size: 12px;
+      padding: 6px 10px;
     }
 
     .hero-greeting {
@@ -565,8 +1832,9 @@
     }
 
     .activity-list {
-      display: grid;
-      gap: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
       max-height: 280px;
       overflow: auto;
     }
@@ -574,8 +1842,8 @@
     .activity-actions-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 10px;
+      margin-top: 14px;
       align-items: center;
     }
 
@@ -584,54 +1852,308 @@
       min-width: 0;
     }
 
-    .activity-item {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      background: color-mix(in srgb, var(--card) 94%, var(--accent) 6%);
-      box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 12%, transparent);
+    /* Activity timeline (full card only) */
+    #card_activity_full.activity-timeline-card {
+      position: relative;
+      border-radius: 22px;
+      border: 1px solid color-mix(in srgb, var(--border) 82%, var(--accent) 18%);
+      background: linear-gradient(
+        155deg,
+        color-mix(in srgb, var(--card) 100%, transparent),
+        color-mix(in srgb, var(--card) 94%, var(--accent) 6%) 55%,
+        color-mix(in srgb, var(--card) 98%, var(--border) 2%)
+      );
+      box-shadow:
+        0 1px 0 color-mix(in srgb, #ffffff 10%, transparent) inset,
+        0 20px 48px rgba(15, 23, 42, 0.07);
     }
 
-    [data-theme="dark"] .activity-item {
-      background: color-mix(in srgb, var(--card) 92%, var(--text) 8%);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    [data-theme="dark"] #card_activity_full.activity-timeline-card {
+      background: linear-gradient(
+        155deg,
+        var(--card),
+        color-mix(in srgb, var(--card) 94%, var(--accent) 6%) 60%
+      );
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.05) inset,
+        0 18px 40px rgba(0, 0, 0, 0.35);
     }
 
-    .activity-item .time {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 4px;
+    #card_activity_full .activity-list.activity-timeline {
+      position: relative;
+      padding: 8px 28px 8px 0;
+      gap: 0;
+      max-height: min(420px, 58vh);
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      /* Hide scrollbar chrome; scrolling still works (touch / wheel / trackpad) */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
 
-    .activity-item .activity-summary {
+    #card_activity_full .activity-list.activity-timeline::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    #card_activity_full .activity-list.activity-timeline::before {
+      content: "";
+      position: absolute;
+      right: 14px;
+      top: 20px;
+      bottom: 24px;
+      width: 2px;
+      border-radius: 2px;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--accent) 75%, transparent),
+        color-mix(in srgb, var(--border) 55%, transparent)
+      );
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    #card_activity_full .activity-list.activity-timeline.activity-timeline-empty::before {
+      display: none;
+    }
+
+    #card_activity_full .activity-list.activity-timeline.activity-list--collapsed {
+      max-height: min(260px, 42vh);
+    }
+
+    #card_activity_full .activity-timeline-item {
+      position: relative;
+      margin: 0 0 14px 0;
+      padding: 0 26px 0 0;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    #card_activity_full .activity-timeline-item:last-child {
+      margin-bottom: 6px;
+    }
+
+    #card_activity_full .activity-timeline-item::before {
+      content: "";
+      position: absolute;
+      right: 9px;
+      top: 20px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 2px solid color-mix(in srgb, var(--accent) 70%, var(--border));
+      box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent),
+        0 4px 14px rgba(0, 0, 0, 0.08);
+      z-index: 1;
+    }
+
+    #card_activity_full .activity-timeline-card-inner {
+      border-radius: 16px;
+      padding: 14px 16px;
+      border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+      background: color-mix(in srgb, var(--card) 65%, transparent);
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    [data-theme="dark"] #card_activity_full .activity-timeline-card-inner {
+      background: color-mix(in srgb, var(--card) 78%, transparent);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    #card_activity_full .activity-timeline-item:hover .activity-timeline-card-inner {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.09);
+    }
+
+    #card_activity_full .activity-timeline-item .activity-summary {
       color: var(--text);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .activity-item-detail .activity-detail-meta {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-      font-size: 12px;
-      color: var(--muted);
+      font-size: 14px;
+      font-weight: 520;
+      letter-spacing: -0.02em;
       line-height: 1.5;
     }
 
-    .activity-item-detail .activity-ref {
-      margin-top: 6px;
+    #card_activity_full .activity-timeline-item .activity-receipt-row {
+      margin-top: 12px;
+    }
+
+    #card_activity_full .activity-timeline-item .activity-receipt-row .secondary {
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    #card_activity_full .activity-item-detail .activity-detail-meta {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    #card_activity_full .activity-item-detail .activity-ref {
+      margin-top: 8px;
       font-size: 11px;
       word-break: break-word;
       color: var(--muted);
     }
 
-    #card_activity_full .activity-list {
-      max-height: min(520px, 70vh);
+    #card_activity_full .activity-item-empty {
+      margin: 8px 4px 4px;
+      padding: 28px 18px;
+      text-align: center;
+      border-radius: 16px;
+      border: 1px dashed color-mix(in srgb, var(--border) 72%, var(--muted) 28%);
+      background: color-mix(in srgb, var(--card) 92%, var(--border) 8%);
+    }
+
+    #card_activity_full .activity-item-empty .activity-summary {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Mobile / narrow: balance timeline rail so rows don’t feel stuck to the left edge */
+    @media (max-width: 900px) {
+      #card_activity_full .activity-list.activity-timeline {
+        padding: 8px 22px 8px 12px;
+      }
+      #card_activity_full .activity-timeline-item {
+        padding: 0 22px 0 4px;
+      }
+    }
+
+    body.app-session-mobile #card_activity_full .activity-list.activity-timeline {
+      padding-left: 12px;
+      padding-right: 22px;
+    }
+
+    body.app-session-mobile #card_activity_full .activity-timeline-item {
+      padding-left: 4px;
+    }
+
+    #card_activity_full .activity-timeline-item.activity-item--fee .activity-timeline-card-inner {
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+      background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
+    }
+
+    #card_activity_full .activity-charge-line {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 650;
+      color: color-mix(in srgb, var(--text) 88%, var(--accent) 12%);
+    }
+
+    .home-activity-preview-line.home-activity-preview-line--fee .home-activity-preview-msg {
+      color: color-mix(in srgb, var(--muted) 70%, var(--accent) 30%);
+    }
+
+    .auth-card-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    }
+
+    .auth-card-brand .auth-card-logo {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+
+    .auth-card-brand-name {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 750;
+      font-family: var(--font-brand);
+      letter-spacing: -0.03em;
+    }
+
+    .auth-card-brand-tag {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .auth-card-minimal-support {
+      margin: 12px 0 0;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .auth-card-minimal-sep {
+      margin: 0 6px;
+      color: var(--muted);
+      user-select: none;
+    }
+
+    .site-footer {
+      margin-top: 32px;
+      padding: 24px 0 40px;
+      border-top: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+    }
+
+    .site-footer-inner {
+      max-width: 560px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .site-footer-brand {
+      font-family: var(--font-brand);
+      font-weight: 650;
+      font-size: 15px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+    }
+
+    .site-footer-address {
+      margin: 0 0 10px;
+    }
+
+    .site-footer-contact {
+      margin: 0;
+    }
+
+    .site-footer a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .site-footer a:hover {
+      text-decoration: underline;
     }
 
     @media (max-width: 768px) {
-      .activity-actions-desktop-only {
+      .activity-pdf-btn-desktop {
         display: none !important;
+      }
+
+      .wallet-ops-desktop-hint {
+        display: none;
+      }
+
+      #card_wallet_snapshot .wallet-snapshot-referral-hit {
+        min-width: 82px;
+        min-height: 68px;
+        padding: 8px 9px;
       }
     }
 
@@ -884,6 +2406,14 @@
       text-align: left;
       padding-right: 4px;
       margin: 0 -4px 0 0;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .profile-modal-scroll::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
 
     .profile-modal-scroll h3 {
@@ -937,6 +2467,70 @@
       color: var(--muted);
       line-height: 1.45;
       font-size: 13px;
+    }
+
+    .tx-confirm-recipient-hero {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      margin: 0 0 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tx-confirm-recipient-hero.tx-confirm-hero-visible {
+      display: flex;
+    }
+
+    .tx-confirm-avatar-wrap {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+    }
+
+    .tx-confirm-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      display: none;
+    }
+
+    .tx-confirm-avatar-placeholder {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: color-mix(in srgb, var(--card) 70%, var(--border) 30%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-brand);
+      font-weight: 800;
+      font-size: 28px;
+      color: var(--muted);
+    }
+
+    .tx-confirm-recipient-name {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .tx-confirm-recipient-handle {
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
 
     .tx-confirm-actions {
@@ -1070,6 +2664,14 @@
       overflow: auto;
       font-size: 12px;
       line-height: 1.5;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    pre::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
 
     [data-theme="dark"] pre {
@@ -1230,6 +2832,56 @@
         color: var(--text);
       }
 
+      /* Activity bell: never use full-width primary black button styles on phones */
+      button.topbar-bell-btn {
+        width: 42px !important;
+        min-height: 42px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: color-mix(in srgb, var(--card) 82%, var(--border) 18%) !important;
+        border: 1px solid color-mix(in srgb, var(--border) 70%, transparent) !important;
+        color: var(--text) !important;
+        box-shadow: none !important;
+      }
+
+      [data-theme="dark"] button.topbar-bell-btn {
+        background: color-mix(in srgb, var(--card) 78%, var(--border) 22%) !important;
+        border-color: var(--border) !important;
+        color: var(--text) !important;
+      }
+
+      /* Referral gift box: not full-width primary black button */
+      button.wallet-snapshot-referral-hit {
+        width: auto !important;
+        min-width: 82px !important;
+        min-height: 68px !important;
+        margin: 0 !important;
+        padding: 8px 9px !important;
+        background: color-mix(in srgb, var(--card) 95%, var(--border) 5%) !important;
+        border: 1px solid color-mix(in srgb, var(--border) 82%, var(--accent) 18%) !important;
+        color: var(--text) !important;
+        box-shadow: none !important;
+      }
+
+      [data-theme="dark"] button.wallet-snapshot-referral-hit {
+        background: color-mix(in srgb, var(--card) 93%, var(--border) 7%) !important;
+        border-color: var(--border) !important;
+        color: var(--text) !important;
+      }
+
+      /* Profile row + bell on one line (right: notifications) */
+      #card_greeting .hero-greeting {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      #card_greeting .greet-left {
+        flex: 1;
+        min-width: 0;
+      }
+
       /* Profile sheet: full-width ghost Close stays readable on the card */
       .profile-modal-scroll button.secondary {
         background: color-mix(in srgb, var(--card) 88%, var(--border) 12%);
@@ -1258,6 +2910,35 @@
         font-size: 14px;
       }
 
+      /* vw alone overflows narrow 2-up tiles; cqi scales to each tile width */
+      #card_wallet_snapshot .wallet-snapshot-tile .metric .value {
+        font-size: clamp(1.12rem, 0.62rem + 3.5vw, 1.9rem);
+        font-weight: 740;
+        line-height: 1.12;
+        letter-spacing: -0.03em;
+      }
+
+      @supports (font-size: 1cqi) {
+        #card_wallet_snapshot .wallet-snapshot-tile .metric .value {
+          font-size: clamp(1.12rem, 0.52rem + 10cqi, 2.08rem);
+        }
+      }
+
+      #card_wallet_snapshot .wallet-snapshot-tile .metric .label {
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        margin-bottom: 8px;
+      }
+
+      #card_wallet_snapshot .wallet-snapshot-tile {
+        padding: 10px 8px;
+        min-height: 128px;
+      }
+
+      #card_wallet_snapshot > h3 {
+        font-size: 19px;
+      }
+
       .hero-greeting {
         align-items: flex-start;
         flex-direction: column;
@@ -1275,10 +2956,6 @@
       .avatar-circle {
         width: 50px;
         height: 50px;
-      }
-
-      .activity-list {
-        max-height: none;
       }
 
       .activity-actions-row {
@@ -1352,6 +3029,14 @@
         max-height: 82vh;
         overflow: auto;
         padding-bottom: 14px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .avatar-modal::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
       }
 
       .mobile-quick-bar button.tab-active {
@@ -1359,8 +3044,53 @@
         border: none !important;
       }
 
+      .mobile-quick-bar button.tab-active .tab-inner > span:last-child {
+        font-weight: 780;
+        color: var(--accent);
+        letter-spacing: 0.02em;
+      }
+
+      .mobile-quick-bar button.mobile-tab-flash .tab-inner {
+        animation: mobile-tab-flash-kf 0.26s ease-out;
+      }
+
+      @keyframes mobile-tab-flash-kf {
+        0% {
+          transform: scale(0.94);
+          opacity: 0.75;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
       [data-theme="dark"] .mobile-quick-bar button.tab-active {
         background: color-mix(in srgb, var(--accent) 28%, transparent) !important;
+      }
+
+      body.app-session-mobile #card_wallet_snapshot .wallet-snapshot-referral-hit {
+        -webkit-tap-highlight-color: rgba(120, 120, 120, 0.12);
+      }
+
+      body.app-session-mobile #card_wallet_snapshot .wallet-snapshot-referral-hit:focus {
+        outline: none;
+      }
+
+      body.app-session-mobile #card_wallet_snapshot .wallet-snapshot-referral-hit:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--accent) 40%, var(--border) 60%);
+        outline-offset: 2px;
+        border-radius: 14px;
+      }
+
+      body.app-session-mobile #card_wallet_snapshot:hover {
+        transform: none;
+        border-color: var(--border);
+        box-shadow: 0 10px 22px rgba(20, 20, 20, 0.05), 0 1px 0 var(--surface-glow) inset;
+      }
+
+      [data-theme="dark"] body.app-session-mobile #card_wallet_snapshot:hover {
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
       }
 
       /* Logged-in mobile: floating glass header — logo + Sahara stacked */
@@ -1522,7 +3252,7 @@
       </div>
     </div>
 
-    <div id="auth_hero" class="auth-hero">
+    <div id="auth_hero" class="auth-hero" style="display:none;" aria-hidden="true">
       <span class="logo-mark" aria-label="Sahara logo">
         <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <rect x="8" y="16" width="40" height="26" rx="6" stroke="currentColor" stroke-opacity="0.34" stroke-width="2.75"/>
@@ -1554,8 +3284,19 @@
         </div>
       </div>
       <div id="card_register" class="card span-12" style="display:none;">
-        <h3>Create Account</h3>
-        <div class="sub">New here? Create your Sahara account to get started.</div>
+        <div class="auth-card-brand">
+          <span class="logo-mark auth-card-logo" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="8" y="16" width="40" height="26" rx="6" stroke="currentColor" stroke-opacity="0.34" stroke-width="2.75"/>
+              <rect x="18" y="24" width="40" height="26" rx="6" stroke="currentColor" stroke-width="2.75"/>
+            </svg>
+          </span>
+          <div>
+            <p class="auth-card-brand-name">Sahara</p>
+            <p class="auth-card-brand-tag">Create your account</p>
+          </div>
+        </div>
+        <h3>Create account</h3>
         <div class="row">
           <input id="reg_name" placeholder="Full name">
           <input id="reg_email" placeholder="Email">
@@ -1574,11 +3315,25 @@
           Already have an account?
           <button type="button" onclick="showSignInCard()">Sign in</button>
         </div>
+        <p class="auth-card-minimal-support">
+          <button type="button" class="link-support" onclick="openSupportModal()">Help</button>
+        </p>
       </div>
 
       <div id="card_login" class="card span-12">
-        <h3>Sign In</h3>
-        <div class="sub">Already have an account? Sign in to continue.</div>
+        <div class="auth-card-brand">
+          <span class="logo-mark auth-card-logo" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="8" y="16" width="40" height="26" rx="6" stroke="currentColor" stroke-opacity="0.34" stroke-width="2.75"/>
+              <rect x="18" y="24" width="40" height="26" rx="6" stroke="currentColor" stroke-width="2.75"/>
+            </svg>
+          </span>
+          <div>
+            <p class="auth-card-brand-name">Sahara</p>
+            <p class="auth-card-brand-tag">Sign in to continue</p>
+          </div>
+        </div>
+        <h3>Sign in</h3>
         <div class="row">
           <input id="log_email" placeholder="Email">
           <div class="password-wrap">
@@ -1590,10 +3345,11 @@
           <input id="log_otp" placeholder="2FA code (if enabled)" inputmode="numeric">
         </div>
         <button onclick="login()">Login</button>
-        <div class="auth-switch">
-          New to Sahara?
-          <button type="button" onclick="showRegisterCard()">Create account</button>
-        </div>
+        <p class="auth-card-minimal-support">
+          <button type="button" class="link-support" onclick="openSupportModal()">Help</button>
+          <span class="auth-card-minimal-sep" aria-hidden="true">·</span>
+          <button type="button" class="link-support" onclick="showRegisterCard()">Create an account</button>
+        </p>
       </div>
 
       <div id="card_profile_photo" class="card span-6">
@@ -1605,86 +3361,213 @@
         </div>
       </div>
 
-      <div id="card_wallet_ops" class="card span-8">
+      <div id="card_wallet_ops" class="card span-6">
         <h3>Wallet Operations</h3>
-        <div class="sub" style="margin-bottom:12px;">On your phone, open the <strong>Payments</strong> tab — wallet moves, PayPal demos, FX, withdrawals, and Sahara transfers live there with saved payment methods and quick tools.</div>
+        <div id="wallet_ops_mobile_launcher" class="wallet-ops-launcher">
+          <p class="sub" style="margin:6px 0 10px;">Tap a section to open it — <strong>receive</strong>, <strong>convert &amp; withdraw</strong>, or <strong>pay / request</strong>. Keeps this screen short.</p>
+          <button type="button" class="wallet-ops-open-btn" onclick="openWalletOpsSheet()">Open wallet tools</button>
+        </div>
+        <div id="wallet_ops_desktop_host">
+          <div id="wallet_ops_sections">
+        <p class="sub wallet-ops-desktop-hint" style="margin-bottom:14px;">Tap a section to expand it — keeps the page short. On your phone, use <strong>Open wallet tools</strong>.</p>
 
-        <div class="sub">1) Add USD Funds</div>
-        <div class="row-3">
-          <input id="fund_amount" type="number" placeholder="USD amount">
-          <input id="fund_ref" placeholder="Reference">
-          <button onclick="addFunds()">Credit Wallet</button>
-        </div>
+        <div class="wallet-ops-stack">
 
-        <div class="sub" style="margin-top: 10px;">Demo: Client pays via PayPal to Sahara</div>
-        <div class="row-3">
-          <input id="paypal_demo_amount" type="number" placeholder="Gross USD from client">
-          <input id="paypal_demo_email" placeholder="Client payer email">
-          <input id="paypal_demo_note" placeholder="Payment note">
-        </div>
-        <button class="secondary" onclick="simulatePaypalReceive()">Simulate PayPal Receive</button>
+        <details class="wallet-ops-category wallet-ops-cat-receive">
+          <summary class="wallet-ops-category-summary">
+            <span class="wallet-ops-summary-lead">
+              <span class="wallet-ops-category-eyebrow">Money in</span>
+              <span id="wo_cat_receive_title" class="wallet-ops-category-title">Receive &amp; add</span>
+            </span>
+            <span class="wallet-ops-category-chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="wallet-ops-category-body">
+            <p class="wallet-ops-category-desc">Bring funds into your Sahara wallet — manual credit in this demo, plus a PayPal-style receive simulation.</p>
+            <div class="wallet-ops-subblock">
+              <p class="wallet-ops-subblock-label">Credit wallet (demo)</p>
+              <p class="sub" style="margin:0 0 8px;font-size:12px;color:var(--muted);"><strong>Credit Wallet</strong> adds USD to your <strong>in-app balance</strong> from the amount and reference you enter — not from your saved card. Production top-ups would use your real funding source.</p>
+              <div class="row-3">
+                <input id="fund_amount" type="number" placeholder="USD amount">
+                <input id="fund_ref" placeholder="Reference">
+                <button type="button" id="btn_credit_wallet" class="wallet-ops-btn-compact" onclick="addFunds()">Credit Wallet</button>
+              </div>
+            </div>
+            <div class="wallet-ops-subblock">
+              <p class="wallet-ops-subblock-label">Demo: client pays via PayPal</p>
+              <p class="sub" style="margin:0 0 8px;font-size:12px;color:var(--muted);">Each simulated payment is logged with a unique demo invoice ID in Activity (not shown here).</p>
+              <div class="row-3">
+                <input id="paypal_demo_amount" type="number" placeholder="Gross USD from client">
+                <input id="paypal_demo_email" placeholder="Client payer email">
+                <input id="paypal_demo_note" placeholder="Payment note">
+              </div>
+              <button type="button" class="secondary" onclick="simulatePaypalReceive()">Simulate PayPal Receive</button>
+            </div>
+          </div>
+        </details>
 
-        <div class="sub" style="margin-top: 10px;">Demo: Create PayPal invoice with unique ID</div>
+        <details class="wallet-ops-category wallet-ops-cat-withdraw">
+          <summary class="wallet-ops-category-summary">
+            <span class="wallet-ops-summary-lead">
+              <span class="wallet-ops-category-eyebrow">Balances &amp; cash out</span>
+              <span id="wo_cat_convert_wd_title" class="wallet-ops-category-title">Convert &amp; withdraw</span>
+            </span>
+            <span class="wallet-ops-category-chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="wallet-ops-category-body">
+            <p class="wallet-ops-category-desc">Convert between USD and your cedis or naira wallet, then withdraw to Mobile Money or a bank. Convert first if you need local currency before cashing out.</p>
+            <div class="wallet-ops-subblock">
+              <p class="wallet-ops-subblock-label">Convert currency</p>
+              <p class="sub" style="margin:0 0 10px;font-size:12px;color:var(--muted);">Pick <strong>cedis</strong> or <strong>naira</strong> only. Edit either side — the other updates. Converting debits USD and credits your GHS or NGN wallet.</p>
+              <div class="wallet-ops-fx-block">
+                <div class="row" style="margin-top:0;">
+                  <label for="fx_target_currency" style="font-size:13px;font-weight:600;">Local currency</label>
+                  <select id="fx_target_currency" style="margin-top:4px;max-width:280px;" onchange="onFxTargetCurrencyChange()">
+                    <option value="GHS">Ghana cedis (GH₵)</option>
+                    <option value="NGN">Nigerian naira (₦)</option>
+                  </select>
+                </div>
+                <div class="fx-dual-grid">
+                  <div class="fx-field">
+                    <label for="fx_usd_amount">USD</label>
+                    <input id="fx_usd_amount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal" oninput="scheduleFxPreviewFromUsd()">
+                  </div>
+                  <div class="fx-dual-swap" aria-hidden="true">⇄</div>
+                  <div class="fx-field">
+                    <label for="fx_local_amount" id="fx_local_label">Cedis (GHS)</label>
+                    <input id="fx_local_amount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal" oninput="scheduleFxPreviewFromLocal()">
+                  </div>
+                </div>
+                <div class="row" style="margin-top:12px;">
+                  <button type="button" onclick="convertDirect()">Convert &amp; credit wallet (uses USD amount)</button>
+                </div>
+                <div id="fx_preview_wrap" class="fx-preview-box" style="display:none;">
+                  <div id="fx_preview_main"></div>
+                  <div class="muted" id="fx_preview_sub"></div>
+                </div>
+              </div>
+            </div>
+            <div class="wallet-ops-subblock">
+              <p class="wallet-ops-subblock-label">Withdraw to MoMo or bank</p>
+              <p class="sub" style="margin:0 0 8px;font-size:12px;color:var(--muted);">Payouts use the details you enter. This demo does not verify your number — production would.</p>
         <div class="row-3">
-          <input id="paypal_inv_amount" type="number" placeholder="Invoice USD amount">
-          <input id="paypal_inv_client_name" placeholder="Client name">
-          <input id="paypal_inv_client_email" placeholder="Client email">
-        </div>
-        <div class="row">
-          <input id="paypal_inv_note" placeholder="Invoice note (optional)">
-          <button class="secondary" onclick="createPaypalInvoice()">Create Invoice ID</button>
-        </div>
-        <div id="paypal_invoice_last" class="sub" style="margin-top:6px;"></div>
-        <div id="paypal_invoice_list" class="activity-list" style="margin-top:10px;"></div>
-
-        <div class="sub">2) Convert USD → GHS or Naira</div>
-        <div class="sub" style="margin-top:4px;color:var(--muted);">Enter a USD amount — we show the estimated credit to your cedi or naira wallet. Then convert in one step.</div>
-        <div class="row-3">
-          <select id="fx_target_currency" onchange="scheduleFxPreview()">
-            <option value="GHS">Convert to Ghana cedis (GHS)</option>
-            <option value="NGN">Convert to Nigerian naira (NGN)</option>
-          </select>
-          <input id="quote_amount" type="number" min="0" step="0.01" placeholder="USD amount (e.g. 1)" oninput="scheduleFxPreview()">
-          <button type="button" onclick="convertDirect()">Convert &amp; credit wallet</button>
-        </div>
-        <div id="fx_preview_wrap" class="fx-preview-box" style="display:none;">
-          <div id="fx_preview_main"></div>
-          <div class="muted" id="fx_preview_sub"></div>
-        </div>
-
-        <div class="sub" style="margin-top: 14px;">3) Withdraw</div>
-        <div class="row-3">
-          <select id="wd_currency" onchange="clearWithdrawError()">
+          <select id="wd_currency" onchange="clearWithdrawError(); onWithdrawDraftChanged();">
             <option value="GHS">GHS</option>
             <option value="USD">USD</option>
             <option value="NGN">NGN</option>
           </select>
-          <input id="wd_amount" type="number" min="0" step="0.01" placeholder="Amount" oninput="clearWithdrawError()">
-          <select id="wd_type">
+          <input id="wd_amount" type="number" min="0" step="0.01" placeholder="Amount" oninput="clearWithdrawError(); onWithdrawDraftChanged();">
+          <select id="wd_type" onchange="onWithdrawDraftChanged();">
             <option value="momo">Mobile Money</option>
             <option value="bank">Bank Account</option>
           </select>
         </div>
-        <div class="row">
-          <input id="wd_account" placeholder="Destination account" oninput="clearWithdrawError()">
-          <button type="button" onclick="withdraw()">Withdraw Funds</button>
+        <div class="row wallet-ops-wd-account-row" style="margin-top:8px;">
+          <input id="wd_account" placeholder="Destination account or MoMo number" oninput="clearWithdrawError(); onWithdrawDraftChanged();">
         </div>
         <div id="wd_error" class="wd-error-text" role="alert"></div>
+        <div id="wd_success_banner" class="wd-success-banner" role="status" aria-live="polite"></div>
+        <button id="btn_withdraw_funds" type="button" class="wallet-ops-primary-btn wallet-ops-btn-compact" onclick="withdraw()">Withdraw Funds</button>
+            </div>
+          </div>
+        </details>
 
-        <div class="sub" style="margin-top: 14px;">4) Sahara-to-Sahara Transfer</div>
-        <div class="row-3">
-          <input id="s2s_handle" placeholder="Recipient (e.g. kofi@sahara.com)">
-          <input id="s2s_amount" type="number" placeholder="USD amount">
-          <input id="s2s_note" placeholder="Note">
+        <details class="wallet-ops-category wallet-ops-cat-people">
+          <summary class="wallet-ops-category-summary">
+            <span class="wallet-ops-summary-lead">
+              <span class="wallet-ops-category-eyebrow">Peers</span>
+              <span id="wo_cat_people_title" class="wallet-ops-category-title">Pay &amp; request</span>
+            </span>
+            <span class="wallet-ops-category-chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="wallet-ops-category-body">
+            <p class="wallet-ops-people-intro">Send USD to a peer, or copy a link to request payment.</p>
+        <div class="wallet-ops-people-grid">
+          <section class="wallet-ops-panel" aria-labelledby="wo_pay_title">
+            <button
+              id="wo_pay_title"
+              type="button"
+              class="wallet-ops-peer-toggle"
+              aria-expanded="false"
+              aria-controls="wo_pay_body"
+              onclick="togglePeerPanel('wo_pay_body', 'wo_pay_title')"
+            >
+              Pay someone
+            </button>
+            <div id="wo_pay_body" class="wallet-ops-peer-panel-body" style="display:none;">
+              <p class="wallet-ops-s2s-hint" role="status">Sent from your <strong>USD wallet</strong> only — not from saved cards.</p>
+              <div class="s2s-recent-row">
+                <label for="s2s_recent_select">Recent recipient</label>
+                <select id="s2s_recent_select" aria-label="Pick a recent recipient" onchange="onS2sRecentSelect()">
+                  <option value="">Optional — pick someone you paid</option>
+                </select>
+              </div>
+              <div class="wallet-ops-s2s-fields">
+                <input id="s2s_handle" placeholder="Their address (e.g. kofi@sahara.com)" autocomplete="off" oninput="onS2sHandleInput()" onblur="scheduleS2sRecipientLookup(true)">
+                <div class="wallet-ops-s2s-fields-row2">
+                  <input id="s2s_amount" type="number" placeholder="Amount (USD)" inputmode="decimal" min="0" step="0.01">
+                  <input id="s2s_note" placeholder="Note (optional)">
+                </div>
+              </div>
+              <p id="s2s_lookup_status" class="s2s-lookup-status-line" role="alert" aria-live="polite"></p>
+              <div id="s2s_recipient_preview" class="s2s-peer-preview" aria-live="polite" style="display:none;">
+                <div class="s2s-peer-preview-inner">
+                  <div class="s2s-peer-avatar-wrap">
+                    <img id="s2s_preview_img" class="s2s-peer-avatar" alt="" />
+                    <div id="s2s_preview_ph" class="s2s-peer-placeholder">—</div>
+                  </div>
+                  <div style="min-width:0;">
+                    <div id="s2s_preview_name" class="s2s-peer-name"></div>
+                    <div id="s2s_preview_handle" class="s2s-peer-handle muted"></div>
+                  </div>
+                </div>
+                <p id="s2s_preview_hint" class="sub" style="display:none;margin:8px 0 0;" aria-hidden="true"></p>
+              </div>
+              <button id="btn_transfer_sahara" type="button" class="wallet-ops-primary-btn secondary" onclick="transferSahara()">Send money</button>
+            </div>
+          </section>
+          <section class="wallet-ops-panel pr-request-block" aria-labelledby="wo_req_title">
+            <button
+              id="wo_req_title"
+              type="button"
+              class="wallet-ops-peer-toggle"
+              aria-expanded="false"
+              aria-controls="wo_req_body"
+              onclick="togglePeerPanel('wo_req_body', 'wo_req_title')"
+            >
+              Request money
+            </button>
+            <div id="wo_req_body" class="wallet-ops-peer-panel-body" style="display:none;">
+              <p class="wallet-ops-s2s-hint">They open your link and pay you in-app.</p>
+              <div id="pr_self_preview" class="s2s-peer-preview pr-self-preview s2s-peer-preview-active" style="display:none;" aria-hidden="true">
+                <div class="s2s-peer-preview-inner">
+                  <div class="s2s-peer-avatar-wrap">
+                    <img id="pr_self_img" class="s2s-peer-avatar" alt="" />
+                    <div id="pr_self_ph" class="s2s-peer-placeholder">—</div>
+                  </div>
+                  <div style="min-width:0;">
+                    <div id="pr_self_name" class="s2s-peer-name"></div>
+                    <div id="pr_self_handle" class="s2s-peer-handle muted"></div>
+                  </div>
+                </div>
+                <p class="sub" style="margin:8px 0 0;">This appears on your request so the payer knows it’s from you.</p>
+              </div>
+              <div class="wallet-ops-s2s-fields">
+                <div class="wallet-ops-s2s-fields-row2">
+                  <input id="pr_amount" type="number" min="0.01" step="0.01" placeholder="Amount (USD) *" inputmode="decimal">
+                  <input id="pr_note" placeholder="Note (optional)">
+                </div>
+                <button type="button" class="secondary wallet-ops-s2s-full-btn" onclick="copyPaymentRequest()">Copy link &amp; message</button>
+              </div>
+            </div>
+          </section>
         </div>
-        <button class="secondary" onclick="transferSahara()">Send to Sahara User</button>
-      </div>
+          </div>
+        </details>
 
-      <div id="card_quick_actions" class="card span-4">
-        <h3>Quick Actions</h3>
-        <button class="secondary" onclick="loadProfile()">Load Profile</button>
-        <button class="secondary" onclick="loadTransactions()">Transactions</button>
-        <button class="secondary" onclick="loadMyKyc()">My KYC</button>
+        </div>
+
+          </div>
+        </div>
       </div>
 
       <div id="card_kyc" class="card span-8">
@@ -1693,28 +3576,34 @@
           Regulated wallets usually confirm both your <strong>ID document</strong> and that <strong>you match the photo</strong> on that document.
           Upload a live face photo (selfie) plus your passport or national ID image. Our team reviews both before approving your account.
         </div>
-        <div class="sub" style="margin-top:12px;font-weight:600;">1) Face verification (selfie)</div>
+        <p class="sub" style="margin-top:10px;font-weight:600;color:var(--text);">
+          All items below are required. Your form will not submit until the selfie, ID photo, and every field are completed.
+        </p>
+        <div id="kyc_form_error" class="kyc-form-error" role="alert" style="display:none;"></div>
+        <div class="sub" style="margin-top:12px;font-weight:600;">1) Face verification (selfie) <span class="kyc-req" aria-hidden="true">*</span></div>
         <div class="sub">Use good lighting, face the camera, no hat or sunglasses. On phone you can use the front camera.</div>
         <input id="kyc_face_image_url" type="hidden" value="" />
         <div class="row">
-          <input id="kyc_face_file" type="file" accept="image/*" capture="user" />
+          <input id="kyc_face_file" type="file" accept="image/*" capture="user" aria-label="Selfie image file" />
           <button class="secondary" type="button" onclick="uploadFaceForKyc()">Upload selfie</button>
         </div>
-        <div class="sub" style="margin-top:14px;font-weight:600;">2) Passport or ID image</div>
+        <p id="kyc_face_status" class="sub kyc-upload-status" aria-live="polite"></p>
+        <div class="sub" style="margin-top:14px;font-weight:600;">2) Passport or ID details &amp; image <span class="kyc-req" aria-hidden="true">*</span></div>
         <div class="row-3">
-          <input id="kyc_passport_number" placeholder="Passport / ID number">
-          <input id="kyc_passport_country" placeholder="Document country">
-          <input id="kyc_residence_country" placeholder="Residence country">
+          <input id="kyc_passport_number" required autocomplete="off" placeholder="Passport / ID number *" aria-required="true">
+          <input id="kyc_passport_country" required autocomplete="off" placeholder="Document country *" aria-required="true">
+          <input id="kyc_residence_country" required autocomplete="off" placeholder="Residence country *" aria-required="true">
         </div>
         <div class="row">
-          <input id="kyc_city" placeholder="Current city">
-          <input id="kyc_passport_image_url" placeholder="Document image URL (auto after upload)">
+          <input id="kyc_city" required autocomplete="off" placeholder="Current city *" aria-required="true">
         </div>
+        <input id="kyc_passport_image_url" type="hidden" value="" />
         <div class="row">
-          <input id="kyc_passport_file" type="file" accept="image/*" />
-          <button class="secondary" onclick="uploadPassportForKyc()">Upload passport / ID photo</button>
+          <input id="kyc_passport_file" type="file" accept="image/*" aria-label="ID document image file" />
+          <button class="secondary" type="button" onclick="uploadPassportForKyc()">Upload passport / ID photo</button>
         </div>
-        <button onclick="submitKyc()">Submit for verification</button>
+        <p id="kyc_passport_status" class="sub kyc-upload-status" aria-live="polite"></p>
+        <button type="button" onclick="submitKyc()">Submit for verification</button>
       </div>
 
       <div id="card_onboarding_pending" class="card span-12" style="display:none;">
@@ -1734,74 +3623,122 @@
               <p id="greeting_subtext">Welcome — your wallet is ready when setup is complete.</p>
             </div>
           </div>
+          <div class="greet-right" aria-hidden="false">
+            <div id="topbar_activity_wrap" class="activity-bell-wrap" style="display:none;" aria-hidden="true">
+              <div class="topbar-notification-wrap">
+                <button
+                  type="button"
+                  id="topbar_activity_bell"
+                  class="topbar-bell-btn"
+                  aria-expanded="false"
+                  aria-haspopup="dialog"
+                  aria-controls="topbar_activity_dropdown"
+                  onclick="toggleTopbarActivityDropdown(event)"
+                  onmousedown="event.stopPropagation()"
+                  title="Recent activity"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M12 3a5 5 0 00-5 5v2.382c0 .793-.176 1.576-.51 2.298L5.55 15.2A1 1 0 006.45 16.5h11.1a1 1 0 00.9-1.3l-.94-2.52a6.09 6.09 0 01-.51-2.298V8a5 5 0 00-5-5z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+                    <path d="M10 18a2 2 0 004 0" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  </svg>
+                  <span id="topbar_activity_badge" class="topbar-bell-badge" style="display:none;" aria-hidden="true">0</span>
+                </button>
+                <div id="topbar_activity_dropdown" class="topbar-activity-dropdown" role="dialog" aria-label="Recent activity" aria-hidden="true">
+                  <div class="topbar-activity-dropdown-head">Latest on your account</div>
+                  <div id="topbar_activity_preview" class="topbar-activity-list"></div>
+                  <div class="topbar-activity-dropdown-footer">
+                    <button type="button" class="secondary" id="topbar_activity_open_btn" onclick="openActivityFromTopbarBell()">Open Activity</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="card_home_recent_activity" class="card span-12" style="display:none;">
+        <h3>Recent transactions</h3>
+        <p class="sub" style="margin-top:2px;">Latest 3 · receipts &amp; full PDF on the Activity tab</p>
+        <div id="activity_preview_home" class="home-activity-preview-list" aria-live="polite"></div>
+        <div class="home-activity-preview-footer">
+          <button type="button" class="secondary" onclick="setMobileTab('activity')">Open Activity</button>
         </div>
       </div>
 
       <div id="card_wallet_snapshot" class="card span-12">
-        <h3>Wallet Snapshot</h3>
-        <div class="referral-promo" role="note" aria-label="Referral program (demo)">
-          <span class="referral-promo-badge">Referral bonus</span>
-          <p class="referral-promo-text">
-            <strong>Live demo:</strong> share your code from <strong>My Profile</strong>. New users can join with your link (<code style="font-size:12px;">?ref=CODE</code>) or paste your code at signup. When their wallet hits <strong>$100</strong> in qualifying USD inflow (credit wallet, PayPal demo, transfers in), you receive <strong>$20</strong> here.
-          </p>
+        <h3>Wallet</h3>
+        <div class="wallet-snapshot-tiles">
+          <div class="wallet-snapshot-tile wallet-snapshot-tile-usd">
+            <div class="wallet-snapshot-usd-block">
+              <div class="metric">
+                <div class="label">USD balance</div>
+                <div class="value" id="usd_balance_view">-</div>
+              </div>
+            </div>
+          </div>
+          <div class="wallet-snapshot-tile wallet-snapshot-tile-local">
+            <div class="wallet-snapshot-local">
+              <div class="local-picker-row">
+                <label for="snapshot_local_currency">Also in</label>
+                <select id="snapshot_local_currency" onchange="onSnapshotLocalCurrencyChange()">
+                  <option value="GHS">Ghana cedis (GH₵)</option>
+                  <option value="NGN">Nigerian naira (₦)</option>
+                </select>
+              </div>
+              <div class="metric">
+                <div class="label" id="snapshot_local_label">GHS balance</div>
+                <div class="value" id="snapshot_local_balance_view">-</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="wallet-metrics">
-          <div class="metric">
-            <div class="label">USD Balance</div>
-            <div class="value" id="usd_balance_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">GHS Balance</div>
-            <div class="value" id="ghs_balance_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">NGN Balance</div>
-            <div class="value" id="ngn_balance_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">GHS as USD</div>
-            <div class="value" id="ghs_usd_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">NGN as USD</div>
-            <div class="value" id="ngn_usd_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">Total USD Equivalent</div>
-            <div class="value success" id="total_usd_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">USD → GHS</div>
-            <div class="value warning" id="rate_view">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">USD → NGN</div>
-            <div class="value warning" id="rate_ngn_view">-</div>
-          </div>
+        <div class="wallet-snapshot-referral-box" role="note">
+          <button
+            type="button"
+            class="wallet-snapshot-referral-hit"
+            onclick="openProfileToReferral()"
+            title="Referral — open Profile"
+            aria-label="Referral bonus up to twenty dollars. Opens profile for your code."
+          >
+            <span class="wallet-snapshot-referral-icon" aria-hidden="true">🎁</span>
+            <span class="wallet-snapshot-referral-kicker">Referral</span>
+          </button>
         </div>
       </div>
 
       <div id="card_admin_monitoring" class="card span-12">
-        <h3>Admin Monitoring</h3>
-        <div class="sub">Login as admin to monitor users, KYC, money movement, and activity feed.</div>
-        <button class="secondary" onclick="loadAdminStats()">Admin Stats</button>
-        <button class="secondary" onclick="loadAdminUsers()">Admin Users</button>
-        <button class="secondary" onclick="loadAdminKyc()">KYC Queue</button>
-        <button class="secondary" onclick="loadAdminWithdrawals()">Withdrawals</button>
-        <button class="secondary" onclick="loadAdminActivity()">Activity Feed</button>
+        <div class="eyebrow">Admin</div>
+        <h3>Dashboard</h3>
+        <p class="sub">Platform totals (ledger entries) and fee revenue in USD. Recent rows mix ledger events, KYC, and withdrawals. Use Refresh to update.</p>
         <div class="wallet-metrics" style="margin-top: 12px;">
+          <div class="metric"><div class="label">Total transactions</div><div class="value" id="a_total_txns">-</div></div>
+          <div class="metric"><div class="label">Fee revenue (USD)</div><div class="value success" id="a_fee_revenue_usd">-</div></div>
           <div class="metric"><div class="label">Total Users</div><div class="value" id="a_total_users">-</div></div>
           <div class="metric"><div class="label">Pending KYC</div><div class="value warning" id="a_pending_kyc">-</div></div>
           <div class="metric"><div class="label">Approved KYC</div><div class="value success" id="a_approved_kyc">-</div></div>
           <div class="metric"><div class="label">Total USD In</div><div class="value" id="a_total_usd_in">-</div></div>
-          <div class="metric"><div class="label">Total Transactions</div><div class="value" id="a_total_txns">-</div></div>
         </div>
+        <div class="admin-dashboard-toolbar">
+          <button type="button" class="secondary" onclick="loadAdminDashboard()">Refresh dashboard</button>
+        </div>
+        <p class="sub" style="margin:10px 0 4px;font-size:12px;font-weight:600;">Recent transactions &amp; activity</p>
+        <div id="admin_activity_feed" class="admin-feed-list" aria-live="polite">
+          <p class="admin-feed-empty sub">Sign in as admin to load the feed.</p>
+        </div>
+        <details class="admin-advanced">
+          <summary>More admin API checks</summary>
+          <div class="admin-dashboard-toolbar" style="margin-top:10px;">
+            <button type="button" class="secondary" onclick="loadAdminUsers()">Users</button>
+            <button type="button" class="secondary" onclick="loadAdminKyc()">KYC queue</button>
+            <button type="button" class="secondary" onclick="loadAdminWithdrawals()">Withdrawals</button>
+          </div>
+        </details>
       </div>
 
       <div id="card_payment_methods" class="card span-6">
         <div class="eyebrow">Payments</div>
         <h3>Payment Methods</h3>
-        <div class="sub">Saved methods show brand and last four digits. Add more anytime.</div>
+        <div class="sub">Saved cards and bank details are stored for this demo; <strong>Pay someone</strong> under Wallet Operations always uses your <strong>USD wallet balance</strong>, not these methods.</div>
         <div id="payment_methods_saved" class="payment-saved-list"></div>
         <div
           id="pm_add_trigger"
@@ -1842,28 +3779,28 @@
         </div>
       </div>
 
-      <div id="card_activity_home" class="card span-6">
-        <div class="eyebrow">Home</div>
-        <h3>Recent transactions</h3>
-        <div class="sub">Latest three items. Use Show more for the full activity screen.</div>
-        <div id="activity_list_home" class="activity-list" style="margin-top:10px;"></div>
-        <div class="activity-actions-row">
-          <button id="activity_home_more_btn" class="secondary" type="button" onclick="setMobileTab('activity')" style="display:none;">Show more</button>
-          <button id="activity_home_pdf_btn" class="secondary" type="button" onclick="downloadActivityPdf()" style="display:none;">Download PDF</button>
-        </div>
-      </div>
-
-      <div id="card_activity_full" class="card span-6">
+      <div id="card_activity_full" class="card span-12 activity-timeline-card">
         <div class="eyebrow">Timeline</div>
         <h3>Activity</h3>
-        <div class="sub">Full transaction details (most recent first).</div>
-        <div id="activity_list_full" class="activity-list" style="margin-top:10px;"></div>
-        <div class="activity-actions-row activity-actions-desktop-only">
+        <div class="sub">Newest first · receipt per row · full PDF below. On your phone, use the <strong>Activity</strong> tab.</div>
+        <div id="activity_list_full" class="activity-list activity-timeline" style="margin-top:12px;"></div>
+        <div class="activity-actions-row">
           <button id="activity_more_btn" class="secondary" type="button" onclick="toggleActivityView()" style="display:none;">Show more</button>
-          <button id="activity_pdf_btn" class="secondary" type="button" onclick="downloadActivityPdf()" style="display:none;">Download PDF</button>
+          <button id="activity_pdf_btn" class="secondary activity-pdf-btn-desktop" type="button" onclick="downloadActivityPdf()" style="display:none;">Download PDF</button>
         </div>
       </div>
     </div>
+
+    <footer class="site-footer" aria-label="Contact and mailing address">
+      <div class="site-footer-inner">
+        <div class="site-footer-brand">Sahara</div>
+        <p class="site-footer-address">500 W Texas Ave, Midland, TX 79701</p>
+        <p class="site-footer-contact">
+          <a href="mailto:support@sahara.com">support@sahara.com</a>
+          · Customer support
+        </p>
+      </div>
+    </footer>
   </div>
 
   <div id="mobile_quick_bar" class="mobile-quick-bar" style="display:none;">
@@ -1955,7 +3892,7 @@
           <div class="k">Your Sahara pay address</div>
           <div class="v" id="profile_modal_pay_handle">-</div>
         </div>
-        <div class="profile-modal-field">
+        <div class="profile-modal-field" id="profile_referral_anchor">
           <div class="k">Referral (demo)</div>
           <div id="profile_referral_panel" class="referral-demo-box">
             <p class="sub">Open after sign-in.</p>
@@ -2009,8 +3946,16 @@
   </div>
 
   <div id="tx_confirm_backdrop" class="tx-confirm-backdrop" onclick="closeTxConfirm(event)">
-    <div class="tx-confirm-modal">
-      <h4 class="tx-confirm-title">Confirm Transaction</h4>
+    <div class="tx-confirm-modal" onclick="event.stopPropagation()">
+      <h4 class="tx-confirm-title" id="tx_confirm_title">Confirm Transaction</h4>
+      <div id="tx_confirm_recipient_hero" class="tx-confirm-recipient-hero" aria-hidden="true">
+        <div class="tx-confirm-avatar-wrap">
+          <img id="tx_confirm_avatar" class="tx-confirm-avatar" alt="" />
+          <div id="tx_confirm_avatar_placeholder" class="tx-confirm-avatar-placeholder"></div>
+        </div>
+        <div id="tx_confirm_recipient_name" class="tx-confirm-recipient-name"></div>
+        <div id="tx_confirm_recipient_handle" class="tx-confirm-recipient-handle"></div>
+      </div>
       <p id="tx_confirm_text" class="tx-confirm-text">Please review and confirm your transaction.</p>
       <div class="tx-confirm-actions">
         <button type="button" class="secondary" onclick="resolveTxConfirm(false)">Cancel</button>
@@ -2026,6 +3971,15 @@
       <div class="tx-confirm-actions">
         <button type="button" onclick="closeAlertModal()">OK</button>
       </div>
+    </div>
+  </div>
+
+  <div id="wallet_ops_sheet_backdrop" class="wallet-ops-sheet-backdrop" onclick="closeWalletOpsSheet(event)">
+    <div class="wallet-ops-sheet" onclick="event.stopPropagation()">
+      <div class="wallet-ops-sheet-grab" aria-hidden="true"></div>
+      <h3 class="wallet-ops-sheet-title">Wallet operations</h3>
+      <div id="wallet_ops_sheet_scroll" class="wallet-ops-sheet-scroll"></div>
+      <button type="button" class="secondary wallet-ops-sheet-close" onclick="closeWalletOpsSheet()">Close</button>
     </div>
   </div>
 
@@ -2060,15 +4014,103 @@
     /** True after /me fails for reasons other than 401/403 (e.g. offline). */
     let sessionBootstrapFailed = false;
     let activityExpanded = false;
+    /** Collapsed list length (desktop + Activity tab); use Show more for the rest */
+    const ACTIVITY_LIST_COLLAPSED_COUNT = 3;
     let activityCache = [];
     let lastWalletSummary = null;
-    let fxPreviewTimer = null;
+    let fxUsdTimer = null;
+    let fxLocalTimer = null;
     let currentMobileTab = "home";
     let txConfirmResolver = null;
     let deferredInstallPrompt = null;
     let balanceRefreshTimer = null;
+    let kycPollTimer = null;
+    let withdrawInFlight = false;
+    /** After a successful withdrawal, submit stays disabled until the user edits amount, currency, type, or destination. */
+    let withdrawAwaitingNewDraft = false;
+    let transferSaharaInFlight = false;
+    let greetingClockTimer = null;
+    let s2sLookupTimer = null;
 
     const GW_MOBILE_TAB_MQ = "(max-width: 768px)";
+
+    /** Calendar date only — no clock time or GMT-style string in UI/PDF copy */
+    function formatDateOnly(value) {
+      if (value == null || value === "") return "—";
+      const d = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(d.getTime())) return "—";
+      return d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    /** Canonical Sahara app URL for share links (meta sahara-app-url), else this page’s origin + path. */
+    function getSaharaPublicAppHref() {
+      try {
+        const meta = document.querySelector('meta[name="sahara-app-url"]');
+        const raw = (meta && meta.content && meta.content.trim()) || "";
+        if (raw) {
+          const u = new URL(raw, window.location.href);
+          return u.href.replace(/\/$/, "") || u.origin;
+        }
+      } catch (_) {}
+      const path = (window.location.pathname || "/").split("?")[0] || "/";
+      return `${window.location.origin}${path}`;
+    }
+
+    function buildSaharaAppLinkWithParams(params) {
+      try {
+        const u = new URL(getSaharaPublicAppHref());
+        if (params && typeof params === "object") {
+          Object.keys(params).forEach((k) => {
+            if (params[k] != null && params[k] !== "") u.searchParams.set(k, String(params[k]));
+          });
+        }
+        return u.href;
+      } catch (_) {
+        const path = (window.location.pathname || "/").split("?")[0] || "/";
+        const q = new URLSearchParams(params || {});
+        return `${window.location.origin}${path}?${q.toString()}`;
+      }
+    }
+
+    function setWithdrawFormBusy(busy) {
+      ["wd_currency", "wd_amount", "wd_type", "wd_account"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !!busy;
+      });
+    }
+
+    function showWithdrawSuccessBanner() {
+      const el = document.getElementById("wd_success_banner");
+      if (el) {
+        el.textContent =
+          "Withdrawal submitted — processing. Adjust amount or destination before submitting again.";
+        el.style.display = "block";
+      }
+    }
+
+    function hideWithdrawSuccessBanner() {
+      const el = document.getElementById("wd_success_banner");
+      if (el) {
+        el.textContent = "";
+        el.style.display = "none";
+      }
+    }
+
+    function onWithdrawDraftChanged() {
+      if (!withdrawAwaitingNewDraft) return;
+      withdrawAwaitingNewDraft = false;
+      hideWithdrawSuccessBanner();
+      const btn = document.getElementById("btn_withdraw_funds");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Withdraw Funds";
+        btn.classList.remove("btn-withdraw-submitted");
+      }
+    }
 
     function isMobileTabLayout() {
       return window.matchMedia && window.matchMedia(GW_MOBILE_TAB_MQ).matches;
@@ -2099,6 +4141,27 @@
       }, 1000);
     }
 
+    function stopKycPendingPoll() {
+      if (kycPollTimer) {
+        clearInterval(kycPollTimer);
+        kycPollTimer = null;
+      }
+    }
+
+    /** While KYC is under review, check occasionally so approval can surface without a manual refresh. */
+    function startKycPendingPoll() {
+      stopKycPendingPoll();
+      if (!token || !currentUserProfile) return;
+      if (currentUserProfile.kyc_status !== "pending_review") return;
+      kycPollTimer = setInterval(() => {
+        if (!token) {
+          stopKycPendingPoll();
+          return;
+        }
+        loadProfile().catch(() => {});
+      }, 40000);
+    }
+
     function applyTheme(nextTheme) {
       theme = nextTheme;
       document.documentElement.setAttribute("data-theme", theme);
@@ -2125,6 +4188,7 @@
 
     window.addEventListener("resize", () => {
       applyAuthView();
+      syncWalletOpsPlacement();
       if (activityCache && activityCache.length) {
         renderActivity(activityCache);
       }
@@ -2132,7 +4196,13 @@
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden || !token || !currentUserProfile) return;
-      if (isKycApproved(currentUserProfile)) loadSummary().catch(() => {});
+      if (isKycApproved(currentUserProfile)) {
+        loadSummary().catch(() => {});
+        return;
+      }
+      if (currentUserProfile.kyc_status === "pending_review") {
+        loadProfile().catch(() => {});
+      }
     });
 
     function setOut(data) {
@@ -2236,13 +4306,63 @@
       if (backdrop) backdrop.style.display = "none";
     }
 
+    /** Log out after this many ms with no pointer/keyboard/scroll/touch on the page (desktop + mobile). */
+    const IDLE_LOGOUT_MS = 15 * 60 * 1000;
+    let idleLogoutIntervalId = null;
+    let idleLastActivityAt = 0;
+
+    function idleBumpActivity() {
+      idleLastActivityAt = Date.now();
+    }
+
+    function idleOnVisibility() {
+      if (document.visibilityState !== "visible" || !token) return;
+      if (Date.now() - idleLastActivityAt >= IDLE_LOGOUT_MS) {
+        stopIdleLogoutWatcher();
+        logout();
+      }
+    }
+
+    function startIdleLogoutWatcher() {
+      stopIdleLogoutWatcher();
+      idleLastActivityAt = Date.now();
+      const tick = () => {
+        if (!token) return;
+        if (Date.now() - idleLastActivityAt >= IDLE_LOGOUT_MS) {
+          stopIdleLogoutWatcher();
+          logout();
+        }
+      };
+      idleLogoutIntervalId = setInterval(tick, 30000);
+      window.addEventListener("pointerdown", idleBumpActivity, { passive: true });
+      window.addEventListener("keydown", idleBumpActivity, { passive: true });
+      document.addEventListener("scroll", idleBumpActivity, { passive: true, capture: true });
+      window.addEventListener("touchstart", idleBumpActivity, { passive: true });
+      window.addEventListener("visibilitychange", idleOnVisibility);
+    }
+
+    function stopIdleLogoutWatcher() {
+      if (idleLogoutIntervalId) {
+        clearInterval(idleLogoutIntervalId);
+        idleLogoutIntervalId = null;
+      }
+      window.removeEventListener("pointerdown", idleBumpActivity, { passive: true });
+      window.removeEventListener("keydown", idleBumpActivity, { passive: true });
+      document.removeEventListener("scroll", idleBumpActivity, { passive: true, capture: true });
+      window.removeEventListener("touchstart", idleBumpActivity, { passive: true });
+      window.removeEventListener("visibilitychange", idleOnVisibility);
+    }
+
     function setToken(nextToken) {
       token = nextToken || "";
       if (!token) {
+        stopIdleLogoutWatcher();
         stopBalanceAutoRefresh();
+        stopGreetingClock();
       }
       if (token) {
         localStorage.setItem("gw_token", token);
+        startIdleLogoutWatcher();
       } else {
         localStorage.removeItem("gw_token");
       }
@@ -2266,17 +4386,38 @@
       }
     }
 
+    const GW_SNAPSHOT_LOCAL_KEY = "gw_snapshot_local";
+
+    function syncSnapshotLocalSelectFromStorage() {
+      const sel = document.getElementById("snapshot_local_currency");
+      if (!sel) return;
+      try {
+        const s = localStorage.getItem(GW_SNAPSHOT_LOCAL_KEY);
+        if (s === "NGN" || s === "GHS") sel.value = s;
+      } catch (_) {}
+    }
+
+    function getSnapshotLocalCurrency() {
+      syncSnapshotLocalSelectFromStorage();
+      const sel = document.getElementById("snapshot_local_currency");
+      const v = (sel && sel.value) || "GHS";
+      return String(v).toUpperCase() === "NGN" ? "NGN" : "GHS";
+    }
+
+    function onSnapshotLocalCurrencyChange() {
+      try {
+        const sel = document.getElementById("snapshot_local_currency");
+        if (sel) localStorage.setItem(GW_SNAPSHOT_LOCAL_KEY, sel.value);
+      } catch (_) {}
+      if (lastWalletSummary) renderSummary(lastWalletSummary);
+    }
+
     function renderSummary(summary) {
       if (!summary) return;
       lastWalletSummary = summary;
       const usd = Number(summary.usd_balance ?? 0);
       const ghs = Number(summary.ghs_balance ?? 0);
       const ngn = Number(summary.ngn_balance ?? 0);
-      const ghsUsd = Number(summary.ghs_usd_equivalent ?? 0);
-      const ngnUsd = Number(summary.ngn_usd_equivalent ?? 0);
-      const totalUsd = Number(summary.total_usd_equivalent ?? 0);
-      const rate = Number(summary.display_rate_usd_to_ghs ?? 0);
-      const rateNgn = Number(summary.display_rate_usd_to_ngn ?? 0);
 
       const fmtUsd = new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -2293,39 +4434,24 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
-      const fmtRate = new Intl.NumberFormat("en-GH", {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
-      });
-      const fmtRateNgn = new Intl.NumberFormat("en-NG", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
 
-      document.getElementById("usd_balance_view").textContent = fmtUsd.format(usd);
-      document.getElementById("ghs_balance_view").textContent = `GH₵ ${fmtGhs.format(ghs)}`;
-      const ngnEl = document.getElementById("ngn_balance_view");
-      if (ngnEl) ngnEl.textContent = fmtNgn.format(ngn);
-      document.getElementById("ghs_usd_view").textContent = fmtUsd.format(ghsUsd);
-      const ngnUsdEl = document.getElementById("ngn_usd_view");
-      if (ngnUsdEl) ngnUsdEl.textContent = fmtUsd.format(ngnUsd);
-      document.getElementById("total_usd_view").textContent = fmtUsd.format(totalUsd);
-      document.getElementById("rate_view").textContent = `1 USD = GH₵ ${fmtRate.format(rate)}`;
-      const rNgn = document.getElementById("rate_ngn_view");
-      if (rNgn) rNgn.textContent = rateNgn ? `1 USD = ${fmtRateNgn.format(rateNgn)}` : "—";
+      const usdEl = document.getElementById("usd_balance_view");
+      if (usdEl) usdEl.textContent = fmtUsd.format(usd);
+
+      syncSnapshotLocalSelectFromStorage();
+      const toCur = getSnapshotLocalCurrency();
+      const sel = document.getElementById("snapshot_local_currency");
+      if (sel) sel.value = toCur;
+      const lab = document.getElementById("snapshot_local_label");
+      if (lab) lab.textContent = toCur === "NGN" ? "NGN balance" : "GHS balance";
+      const locEl = document.getElementById("snapshot_local_balance_view");
+      if (locEl) {
+        locEl.textContent = toCur === "NGN" ? fmtNgn.format(ngn) : `GH₵ ${fmtGhs.format(ghs)}`;
+      }
     }
 
     function clearWalletSnapshotDisplay() {
-      [
-        "usd_balance_view",
-        "ghs_balance_view",
-        "ngn_balance_view",
-        "ghs_usd_view",
-        "ngn_usd_view",
-        "total_usd_view",
-        "rate_view",
-        "rate_ngn_view",
-      ].forEach((id) => {
+      ["usd_balance_view", "snapshot_local_balance_view"].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.textContent = "—";
       });
@@ -2409,8 +4535,7 @@
       try {
         const r = await call("/me/referral");
         const code = r.my_referral_code || "—";
-        const path = window.location.pathname || "/";
-        const link = `${window.location.origin}${path}?ref=${encodeURIComponent(code)}`;
+        const link = buildSaharaAppLinkWithParams({ ref: code });
         let html = `<p class="sub" style="margin-top:0;">Share your code or link. When a friend signs up and reaches <strong>$${r.threshold_usd}</strong> in qualifying USD inflow, you get <strong>$${r.bonus_usd}</strong> (demo).</p>`;
         html += `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;">`;
         html += `<code style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:color-mix(in srgb,var(--card)90%,var(--muted)10%);">${code}</code>`;
@@ -2435,6 +4560,14 @@
       const backdrop = document.getElementById("profile_modal_backdrop");
       if (evt && evt.target && evt.target.id !== "profile_modal_backdrop") return;
       if (backdrop) backdrop.style.display = "none";
+    }
+
+    async function openProfileToReferral() {
+      await openProfileModal();
+      requestAnimationFrame(() => {
+        const anchor = document.getElementById("profile_referral_anchor");
+        if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     }
 
     async function savePublicIdAlias() {
@@ -2497,11 +4630,51 @@
       return String(fullName).trim().split(/\s+/)[0] || "there";
     }
 
+    /** Uses the device’s local clock (same as the user’s typical location when they set their OS timezone). */
     function getTimeGreeting() {
       const hour = new Date().getHours();
-      if (hour < 12) return "Good morning";
-      if (hour < 18) return "Good afternoon";
-      return "Good evening";
+      if (hour >= 5 && hour < 12) return "Good morning";
+      if (hour < 17) return "Good afternoon";
+      if (hour < 21) return "Good evening";
+      return "Good night";
+    }
+
+    function getGreetingTimeSubline() {
+      const now = new Date();
+      const weekday = now.toLocaleDateString(undefined, { weekday: "long" });
+      const dateOnly = now.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+      return `${weekday} · ${dateOnly}`;
+    }
+
+    function refreshHomeGreetingFromClock() {
+      const p = currentUserProfile;
+      if (!p || !isKycApproved(p) || !p.profile_photo_url) return;
+      const greetingEl = document.getElementById("greeting_text");
+      const greetingSub = document.getElementById("greeting_subtext");
+      if (greetingEl) {
+        greetingEl.textContent = `${getTimeGreeting()}, ${firstNameFromFullName(p.full_name)}`;
+      }
+      if (greetingSub) {
+        greetingSub.hidden = false;
+        greetingSub.textContent = getGreetingTimeSubline();
+      }
+    }
+
+    function startGreetingClock() {
+      stopGreetingClock();
+      refreshHomeGreetingFromClock();
+      greetingClockTimer = setInterval(refreshHomeGreetingFromClock, 60000);
+    }
+
+    function stopGreetingClock() {
+      if (greetingClockTimer) {
+        clearInterval(greetingClockTimer);
+        greetingClockTimer = null;
+      }
     }
 
     function hasSubmittedKyc(profile) {
@@ -2512,7 +4685,24 @@
       return !!profile && (profile.kyc_status === "approved" || profile.kyc_status === "verified");
     }
 
+    function flashMobileTabButton(tab) {
+      const ids = {
+        home: "mobile_tab_home",
+        activity: "mobile_tab_activity",
+        payments: "mobile_tab_payments",
+      };
+      const btn = document.getElementById(ids[tab] || "");
+      if (!btn) return;
+      btn.classList.remove("mobile-tab-flash");
+      void btn.offsetWidth;
+      btn.classList.add("mobile-tab-flash");
+      setTimeout(() => btn.classList.remove("mobile-tab-flash"), 280);
+    }
+
     function setMobileTab(tab) {
+      closeWalletOpsSheet();
+      const next = tab === "payments" ? "payments" : tab === "activity" ? "activity" : "home";
+      flashMobileTabButton(next);
       if (tab === "payments") currentMobileTab = "payments";
       else if (tab === "activity") currentMobileTab = "activity";
       else currentMobileTab = "home";
@@ -2525,6 +4715,7 @@
         loadPaymentMethods();
       }
       applyMobileTabView();
+      syncWalletOpsPlacement();
     }
 
     function applyMobileTabView() {
@@ -2550,9 +4741,9 @@
         btn.classList.toggle("tab-active", currentMobileTab === key);
       });
 
-      const homeCards = ["card_greeting", "card_wallet_snapshot", "card_activity_home"];
+      const homeCards = ["card_greeting", "card_wallet_snapshot", "card_home_recent_activity"];
       const activityTabCards = ["card_activity_full"];
-      const paymentCards = ["card_wallet_ops", "card_payment_methods", "card_quick_actions"];
+      const paymentCards = ["card_wallet_ops", "card_payment_methods"];
 
       const allMobileManagedCards = [...homeCards, ...activityTabCards, ...paymentCards];
       allMobileManagedCards.forEach((id) => {
@@ -2588,9 +4779,14 @@
         greetingEl.textContent = `${getTimeGreeting()}, ${firstNameFromFullName(profile.full_name)}`;
       }
       const greetingSub = document.getElementById("greeting_subtext");
-      if (greetingSub && approved && hasPhoto) {
-        greetingSub.textContent =
-          "Home: balances & 3 recent items · Activity: full details · Payments: wallet & methods.";
+      if (greetingSub) {
+        if (approved && hasPhoto) {
+          greetingSub.hidden = false;
+          greetingSub.textContent = getGreetingTimeSubline();
+        } else {
+          greetingSub.hidden = false;
+          greetingSub.textContent = "Welcome — your wallet is ready when setup is complete.";
+        }
       }
       const avatar = document.getElementById("greeting_avatar");
       const avatarWrap = document.getElementById("greeting_avatar_wrap");
@@ -2610,10 +4806,9 @@
       const kycCard = document.getElementById("card_kyc");
       const onboardingPending = document.getElementById("card_onboarding_pending");
       const walletSnapshot = document.getElementById("card_wallet_snapshot");
+      const homeRecentActivity = document.getElementById("card_home_recent_activity");
       const walletOps = document.getElementById("card_wallet_ops");
-      const quickActions = document.getElementById("card_quick_actions");
       const paymentCard = document.getElementById("card_payment_methods");
-      const activityHome = document.getElementById("card_activity_home");
       const activityFull = document.getElementById("card_activity_full");
       if (
         grid &&
@@ -2621,21 +4816,19 @@
         profilePhoto &&
         kycCard &&
         walletSnapshot &&
+        homeRecentActivity &&
         walletOps &&
-        quickActions &&
         paymentCard &&
-        activityHome &&
         activityFull &&
         onboardingPending
       ) {
         if (approved) {
           grid.appendChild(greetingCard);
           grid.appendChild(walletSnapshot);
-          grid.appendChild(activityHome);
+          grid.appendChild(homeRecentActivity);
           grid.appendChild(activityFull);
           grid.appendChild(paymentCard);
           grid.appendChild(walletOps);
-          grid.appendChild(quickActions);
         } else if (hasSubmitted) {
           grid.appendChild(onboardingPending);
         } else {
@@ -2661,17 +4854,20 @@
       const registerMode = !!reg && reg.dataset.authMode === "show";
       if (reg) reg.style.display = hasToken ? "none" : (registerMode ? "block" : "none");
       if (login) login.style.display = hasToken ? "none" : (registerMode ? "none" : "block");
-      if (authHero) authHero.style.display = hasToken ? "none" : "block";
+      if (authHero) authHero.style.display = "none";
       if (topbar) topbar.style.display = hasToken ? "flex" : "none";
       if (topbarBrand) topbarBrand.style.display = hasToken ? "flex" : "none";
       document.body.classList.toggle("app-session-mobile", !!(hasToken && isPhone));
       document.body.classList.toggle("gw-logged-in", !!hasToken);
       document.body.classList.toggle("gw-auth-screen", !hasToken);
+      const siteFooter = document.querySelector(".site-footer");
+      if (siteFooter) siteFooter.style.display = hasToken ? "" : "none";
       const isAdminUser = !!(currentUserProfile && currentUserProfile.is_admin);
       const profileAdminLink = document.getElementById("profile_admin_link");
       if (profileAdminLink) {
         profileAdminLink.style.display = hasToken && isAdminUser ? "block" : "none";
       }
+      syncTopbarActivityBellVisibility();
       const mobileQuickBar = document.getElementById("mobile_quick_bar");
       if (mobileQuickBar) mobileQuickBar.style.display = "none";
 
@@ -2689,26 +4885,27 @@
       const snap = document.getElementById("card_wallet_snapshot");
       if (snap) snap.style.display = profileReady && approved ? "block" : "none";
 
-      ["card_wallet_ops", "card_quick_actions", "card_payment_methods"].forEach((id) => {
+      ["card_wallet_ops", "card_payment_methods"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.style.display = profileReady && approved ? "block" : "none";
       });
 
       const mobileNav = isPhone && canShowMobileBottomNav();
-      const activityHome = document.getElementById("card_activity_home");
       const activityFull = document.getElementById("card_activity_full");
-      if (activityHome && activityFull) {
+      if (activityFull) {
         if (!profileReady || !approved) {
-          activityHome.style.display = "none";
           activityFull.style.display = "none";
         } else if (mobileNav) {
-          activityHome.style.display = "none";
           activityFull.style.display = "none";
         } else {
-          activityHome.style.display = "none";
           activityFull.style.display = "block";
         }
+      }
+
+      const homeRecentActivity = document.getElementById("card_home_recent_activity");
+      if (homeRecentActivity && (!profileReady || !approved || !mobileNav)) {
+        homeRecentActivity.style.display = "none";
       }
 
       const profileCard = document.getElementById("card_profile_photo");
@@ -2735,14 +4932,22 @@
       const adminCard = document.getElementById("card_admin_monitoring");
       if (adminCard) {
         adminCard.style.display = hasToken && isAdminUser ? "block" : "none";
+        const grid = document.querySelector(".grid");
+        if (grid && hasToken && isAdminUser && adminCard.parentNode === grid) {
+          const anchor = document.getElementById("card_session_error") || document.getElementById("card_session_loading");
+          if (anchor) grid.insertBefore(adminCard, anchor.nextSibling);
+        }
       }
 
       applyMobileTabView();
+      syncWalletOpsPlacement();
       updateInstallButtonVisibility();
     }
 
     function logout() {
       stopBalanceAutoRefresh();
+      stopGreetingClock();
+      stopKycPendingPoll();
       currentUserProfile = null;
       sessionBootstrapFailed = false;
       setToken("");
@@ -2777,6 +4982,60 @@
       document.getElementById("a_approved_kyc").textContent = stats.approved_kyc ?? "-";
       document.getElementById("a_total_usd_in").textContent = stats.total_usd_in ?? "-";
       document.getElementById("a_total_txns").textContent = stats.total_transactions ?? "-";
+      const fr = document.getElementById("a_fee_revenue_usd");
+      if (fr) {
+        const v = stats.fee_revenue_usd;
+        fr.textContent = v != null && v !== "" ? `$${Number(v).toFixed(2)}` : "-";
+      }
+    }
+
+    function formatAdminFeedTimestamp(ts) {
+      if (ts === undefined || ts === null) return "";
+      try {
+        const d = new Date(ts);
+        if (Number.isNaN(d.getTime())) return "";
+        return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function renderAdminActivityFeed(events) {
+      const root = document.getElementById("admin_activity_feed");
+      if (!root) return;
+      const list = Array.isArray(events) ? events : [];
+      if (!list.length) {
+        root.innerHTML = `<p class="admin-feed-empty sub">No recent ledger or withdrawal events yet.</p>`;
+        return;
+      }
+      root.innerHTML = list
+        .map((e) => {
+          const ts = formatAdminFeedTimestamp(e.timestamp);
+          const typ = escapeHtml(String(e.type || "event"));
+          const uid = e.user_id != null ? `User #${e.user_id}` : "";
+          const sum = escapeHtml(String(e.summary || "").slice(0, 400));
+          return `<div class="admin-feed-row">
+            <span class="admin-feed-ts">${escapeHtml(ts || "—")}</span>
+            <div class="admin-feed-meta"><span>${typ}</span>${uid ? `<span>${escapeHtml(uid)}</span>` : ""}</div>
+            <div class="admin-feed-msg">${sum}</div>
+          </div>`;
+        })
+        .join("");
+    }
+
+    async function loadAdminDashboard() {
+      const root = document.getElementById("admin_activity_feed");
+      if (root) root.innerHTML = `<p class="admin-feed-loading sub">Loading…</p>`;
+      try {
+        const [stats, feed] = await Promise.all([call("/admin/stats"), call("/admin/activity-feed")]);
+        renderAdminStats(stats);
+        renderAdminActivityFeed(feed);
+      } catch (e) {
+        setOut(e);
+        if (root) {
+          root.innerHTML = `<p class="admin-feed-empty sub">Could not load admin data. You need an admin account.</p>`;
+        }
+      }
     }
 
     async function call(path, method = "GET", body = null) {
@@ -2861,77 +5120,250 @@
         const data = await call(`/demo/paypal/receive?${params.toString()}`, "POST");
         if (data.wallet_summary) renderSummary(data.wallet_summary);
         setOut({
-          message: `PayPal demo success: gross $${data.gross_amount_usd}, commission $${data.paypal_commission_usd}, net credited $${data.net_credited_usd}.`,
+          message: `PayPal subscription received — credited $${data.net_credited_usd}. Subscription fee: $${data.paypal_commission_usd}.`,
         });
         await loadActivity();
       } catch (e) { setOut(e); }
     }
 
-    async function createPaypalInvoice() {
+    function hideS2sLookupStatus() {
+      const el = document.getElementById("s2s_lookup_status");
+      if (!el) return;
+      el.textContent = "";
+      el.style.display = "none";
+      el.classList.remove("is-error");
+    }
+
+    function showS2sLookupStatus(message, isError) {
+      const el = document.getElementById("s2s_lookup_status");
+      if (!el || !message) return;
+      el.textContent = message;
+      el.style.display = "block";
+      el.classList.toggle("is-error", !!isError);
+    }
+
+    function clearS2sRecipientPreview() {
+      const box = document.getElementById("s2s_recipient_preview");
+      const img = document.getElementById("s2s_preview_img");
+      const ph = document.getElementById("s2s_preview_ph");
+      const nameEl = document.getElementById("s2s_preview_name");
+      const handleEl = document.getElementById("s2s_preview_handle");
+      const hint = document.getElementById("s2s_preview_hint");
+      if (box) {
+        box.classList.remove("s2s-peer-preview-active");
+        box.style.display = "none";
+      }
+      if (img) {
+        img.removeAttribute("src");
+        img.style.display = "none";
+      }
+      if (ph) {
+        ph.textContent = "—";
+        ph.style.display = "flex";
+      }
+      if (nameEl) nameEl.textContent = "";
+      if (handleEl) handleEl.textContent = "";
+      if (hint) {
+        hint.textContent = "";
+        hint.style.display = "none";
+      }
+    }
+
+    function fillS2sRecipientPreview(verified) {
+      const box = document.getElementById("s2s_recipient_preview");
+      const img = document.getElementById("s2s_preview_img");
+      const ph = document.getElementById("s2s_preview_ph");
+      const nameEl = document.getElementById("s2s_preview_name");
+      const handleEl = document.getElementById("s2s_preview_handle");
+      const hint = document.getElementById("s2s_preview_hint");
+      if (!verified || !box) return;
+      hideS2sLookupStatus();
+      const fullName = [verified.recipient_first_name, verified.recipient_last_name].filter(Boolean).join(" ").trim() || verified.recipient_full_name || verified.pay_handle;
+      const initial = (fullName || verified.pay_handle || "").trim().charAt(0).toUpperCase() || "—";
+      if (nameEl) nameEl.textContent = fullName;
+      if (handleEl) handleEl.textContent = verified.pay_handle || "";
+      if (hint) {
+        hint.textContent = "";
+        hint.style.display = "none";
+      }
+      box.style.display = "block";
+      box.classList.add("s2s-peer-preview-active");
+      const photo = (verified.recipient_profile_photo_url || "").trim();
+      if (photo && img && ph) {
+        img.onerror = () => {
+          img.style.display = "none";
+          img.removeAttribute("src");
+          ph.textContent = initial;
+          ph.style.display = "flex";
+        };
+        img.onload = () => {
+          img.style.display = "block";
+          ph.style.display = "none";
+        };
+        img.src = photo;
+      } else if (img && ph) {
+        img.style.display = "none";
+        img.removeAttribute("src");
+        ph.textContent = initial;
+        ph.style.display = "flex";
+      }
+    }
+
+    function scheduleS2sRecipientLookup(immediate = false) {
+      const ms = immediate ? 0 : 480;
+      if (s2sLookupTimer) clearTimeout(s2sLookupTimer);
+      s2sLookupTimer = setTimeout(() => runS2sRecipientLookup(), ms);
+    }
+
+    function onS2sHandleInput() {
+      const inp = document.getElementById("s2s_handle");
+      const sel = document.getElementById("s2s_recent_select");
+      if (sel && inp && sel.value) {
+        const typed = (inp.value || "").trim().toLowerCase();
+        if (typed !== (sel.value || "").trim().toLowerCase()) sel.value = "";
+      }
+      scheduleS2sRecipientLookup();
+    }
+
+    function onS2sRecentSelect() {
+      const sel = document.getElementById("s2s_recent_select");
+      const inp = document.getElementById("s2s_handle");
+      const v = (sel?.value || "").trim();
+      if (inp && v) inp.value = v;
+      scheduleS2sRecipientLookup(true);
+    }
+
+    async function refreshRecentSaharaRecipients() {
+      const sel = document.getElementById("s2s_recent_select");
+      if (!sel || !token) return;
+      const keep = sel.value;
       try {
-        const amount = Number(document.getElementById("paypal_inv_amount").value);
-        const clientName = document.getElementById("paypal_inv_client_name").value || "";
-        const clientEmail = document.getElementById("paypal_inv_client_email").value || "";
-        const note = document.getElementById("paypal_inv_note").value || "";
-        const params = new URLSearchParams({
-          amount_usd: String(amount),
-          client_name: clientName,
-          client_email: clientEmail,
-          note: note,
-        });
-        const data = await call(`/demo/paypal/invoices?${params.toString()}`, "POST");
-        const root = document.getElementById("paypal_invoice_last");
-        if (root && data && data.invoice) {
-          root.textContent = `Invoice ID: ${data.invoice.invoice_code} (share this with client).`;
+        const data = await call("/transfers/sahara/recent-recipients");
+        const list = (data && data.recipients) || [];
+        const opts = [`<option value="">Optional — pick someone you paid</option>`];
+        for (const r of list) {
+          const h = (r.pay_handle || "").trim();
+          if (!h) continue;
+          const name = (r.full_name || "").trim();
+          const label = name ? `${name} (${h})` : h;
+          opts.push(`<option value="${escapeHtml(h)}">${escapeHtml(label)}</option>`);
         }
-        setOut({ message: `Invoice ${data.invoice.invoice_code} created.` });
-        await loadPaypalInvoices();
-      } catch (e) { setOut(e); }
+        sel.innerHTML = opts.join("");
+        if (keep && list.some((r) => (r.pay_handle || "").trim().toLowerCase() === keep.toLowerCase())) {
+          sel.value = keep;
+        }
+      } catch (_) {
+        sel.innerHTML = `<option value="">Optional — pick someone you paid</option>`;
+      }
     }
 
-    async function markPaypalInvoicePaid(invoiceCode) {
-      try {
-        if (!invoiceCode) return;
-        const data = await call(`/demo/paypal/invoices/${encodeURIComponent(invoiceCode)}/pay`, "POST");
-        if (data.wallet_summary) renderSummary(data.wallet_summary);
-        setOut({
-          message: `Invoice ${data.invoice_code} paid. Gross $${data.gross_amount_usd}, commission $${data.paypal_commission_usd}, net credited $${data.net_credited_usd}.`,
-        });
-        await loadPaypalInvoices();
-        await loadActivity();
-      } catch (e) { setOut(e); }
-    }
-
-    function renderPaypalInvoices(rows) {
-      const root = document.getElementById("paypal_invoice_list");
-      if (!root) return;
-      if (!rows || !rows.length) {
-        root.innerHTML = `<div class="activity-item"><div>No PayPal invoices yet.</div></div>`;
+    async function runS2sRecipientLookup() {
+      const raw = (document.getElementById("s2s_handle")?.value || "").trim().toLowerCase();
+      if (!raw) {
+        hideS2sLookupStatus();
+        clearS2sRecipientPreview();
         return;
       }
-      root.innerHTML = rows.map((r) => `
-        <div class="activity-item">
-          <div><b>${r.invoice_code}</b> - $${Number(r.amount_usd).toFixed(2)} (${r.status})</div>
-          <div class="time">${r.client_name} • ${r.client_email}</div>
-          <div class="time">${r.note || "No note"}</div>
-          ${r.status === "pending"
-            ? `<button class="secondary" type="button" onclick="markPaypalInvoicePaid('${r.invoice_code}')">Mark Paid (Demo)</button>`
-            : `<div class="time">Paid at: ${new Date(r.paid_at || r.created_at).toLocaleString()}</div>`
-          }
-        </div>
-      `).join("");
+      if (!raw.endsWith("@sahara.com")) {
+        clearS2sRecipientPreview();
+        if (raw.includes("@")) {
+          showS2sLookupStatus("Sahara pay addresses end with @sahara.com", true);
+        } else {
+          hideS2sLookupStatus();
+        }
+        return;
+      }
+      if (!token) return;
+      hideS2sLookupStatus();
+      try {
+        const params = new URLSearchParams({ to_pay_handle: raw });
+        const verified = await call(`/transfers/sahara/verify?${params.toString()}`);
+        fillS2sRecipientPreview(verified);
+      } catch (_) {
+        clearS2sRecipientPreview();
+        showS2sLookupStatus(
+          "We couldn’t find that pay address. Check spelling or ask them for their Sahara handle.",
+          true,
+        );
+      }
     }
 
-    async function loadPaypalInvoices() {
-      try {
-        const rows = await call("/demo/paypal/invoices");
-        renderPaypalInvoices(rows);
-      } catch (_) {
-        // Keep silent to avoid noisy banner during initial loading.
+    function resetPaySomeoneFormAfterSuccess() {
+      const h = document.getElementById("s2s_handle");
+      const a = document.getElementById("s2s_amount");
+      const n = document.getElementById("s2s_note");
+      const sel = document.getElementById("s2s_recent_select");
+      if (h) h.value = "";
+      if (a) a.value = "";
+      if (n) n.value = "";
+      if (sel) sel.selectedIndex = 0;
+      hideS2sLookupStatus();
+      clearS2sRecipientPreview();
+    }
+
+    function resetWithdrawFormAfterSuccess() {
+      const amt = document.getElementById("wd_amount");
+      const acc = document.getElementById("wd_account");
+      if (amt) amt.value = "";
+      if (acc) acc.value = "";
+    }
+
+    function renderRequestMoneySelfPreview() {
+      const wrap = document.getElementById("pr_self_preview");
+      if (!wrap) return;
+      if (!currentUserProfile || !isKycApproved(currentUserProfile)) {
+        wrap.style.display = "none";
+        wrap.setAttribute("aria-hidden", "true");
+        return;
+      }
+      wrap.style.display = "block";
+      wrap.setAttribute("aria-hidden", "false");
+      const name = (currentUserProfile.full_name || "").trim() || "—";
+      const handle = (currentUserProfile.pay_handle || "").trim() || "—";
+      const photo = (currentUserProfile.profile_photo_url || "").trim();
+      const nameEl = document.getElementById("pr_self_name");
+      const handleEl = document.getElementById("pr_self_handle");
+      const img = document.getElementById("pr_self_img");
+      const ph = document.getElementById("pr_self_ph");
+      if (nameEl) nameEl.textContent = name;
+      if (handleEl) handleEl.textContent = handle;
+      if (img && ph) {
+        if (photo) {
+          img.onerror = () => {
+            img.style.display = "none";
+            img.removeAttribute("src");
+            ph.textContent = name.charAt(0).toUpperCase() || "—";
+            ph.style.display = "flex";
+          };
+          img.onload = () => {
+            img.style.display = "block";
+            ph.style.display = "none";
+          };
+          img.src = photo;
+        } else {
+          img.style.display = "none";
+          img.removeAttribute("src");
+          ph.textContent = name.charAt(0).toUpperCase() || "—";
+          ph.style.display = "flex";
+        }
       }
     }
 
     async function withdraw() {
+      const btn = document.getElementById("btn_withdraw_funds");
+      if (btn) {
+        btn.classList.add("btn-tapped-feedback");
+        setTimeout(() => btn.classList.remove("btn-tapped-feedback"), 240);
+      }
+      if (withdrawInFlight) return;
+      if (withdrawAwaitingNewDraft) {
+        showAlertModal(
+          "Withdrawal already sent",
+          "Enter a new amount and destination (or change currency / MoMo vs bank), then tap Withdraw Funds again.",
+        );
+        return;
+      }
+
       clearWithdrawError();
       const currency = (document.getElementById("wd_currency")?.value || "GHS").toUpperCase();
       const amount = Number(document.getElementById("wd_amount")?.value);
@@ -2969,6 +5401,14 @@
         setOut({ message: "Withdrawal cancelled." });
         return;
       }
+      withdrawInFlight = true;
+      setWithdrawFormBusy(true);
+      const prevLabel = btn ? btn.textContent : "";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Processing withdrawal…";
+        btn.classList.remove("btn-withdraw-submitted");
+      }
       try {
         const data = await call("/withdrawals", "POST", {
           currency,
@@ -2979,7 +5419,13 @@
         if (data.wallet_summary) renderSummary(data.wallet_summary);
         await loadActivity();
         clearWithdrawError();
-        setOut({ message: "Withdrawal submitted." });
+        resetWithdrawFormAfterSuccess();
+        withdrawAwaitingNewDraft = true;
+        showWithdrawSuccessBanner();
+        setOut({
+          message:
+            "Withdrawal submitted — processing. Change amount or destination before sending another.",
+        });
       } catch (e) {
         const raw =
           typeof e.detail === "string"
@@ -2995,24 +5441,73 @@
           showAlertModal("Cannot withdraw", raw || "Insufficient balance.");
         }
         setOut(e);
+      } finally {
+        withdrawInFlight = false;
+        setWithdrawFormBusy(false);
+        if (btn) {
+          if (withdrawAwaitingNewDraft) {
+            btn.disabled = true;
+            btn.textContent = "Withdrawal submitted";
+            btn.classList.add("btn-withdraw-submitted");
+          } else {
+            btn.disabled = false;
+            btn.textContent = prevLabel || "Withdraw Funds";
+            btn.classList.remove("btn-withdraw-submitted");
+          }
+        }
       }
     }
 
     async function transferSahara() {
+      const btn = document.getElementById("btn_transfer_sahara");
+      if (btn) {
+        btn.classList.add("btn-tapped-feedback");
+        setTimeout(() => btn.classList.remove("btn-tapped-feedback"), 240);
+      }
+      if (transferSaharaInFlight) return;
+
+      const toPayHandle = (document.getElementById("s2s_handle")?.value || "").trim();
+      const amountUsd = Number(document.getElementById("s2s_amount")?.value);
+      const note = document.getElementById("s2s_note")?.value || "";
+      if (!toPayHandle) {
+        showAlertModal("Recipient", "Enter the other person’s Sahara pay address (e.g. name@sahara.com).");
+        return;
+      }
+      if (!(amountUsd > 0)) {
+        showAlertModal("Amount", "Enter how many USD you want to send.");
+        return;
+      }
+
+      transferSaharaInFlight = true;
+      const prevLabel = btn ? btn.textContent : "";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Verifying recipient…";
+      }
       try {
-        const toPayHandle = document.getElementById("s2s_handle").value || "";
-        const amountUsd = Number(document.getElementById("s2s_amount").value);
-        const note = document.getElementById("s2s_note").value || "";
         const verifyParams = new URLSearchParams({ to_pay_handle: toPayHandle });
         const verified = await call(`/transfers/sahara/verify?${verifyParams.toString()}`);
+        fillS2sRecipientPreview(verified);
         const fullName = [verified.recipient_first_name, verified.recipient_last_name].filter(Boolean).join(" ").trim() || verified.recipient_full_name;
-        const ok = await openTxConfirm(
-          `You are sending $${amountUsd.toFixed(2)} to ${fullName} (${verified.pay_handle}). Please confirm your transaction.`
-        );
+        const payoutGhs = Number(lastWalletSummary?.display_rate_usd_to_ghs ?? 0);
+        const ghsLine =
+          payoutGhs > 0
+            ? ` About GH₵ ${(amountUsd * payoutGhs).toFixed(2)} cedis equivalent at Sahara’s estimated rate (they receive USD in-wallet).`
+            : "";
+        const detailText = `Send $${amountUsd.toFixed(2)} USD from your Sahara USD wallet (not from a saved card) to the recipient below.${ghsLine} Tap Confirm to complete.`;
+        if (btn) btn.textContent = "Waiting for your confirm…";
+        const ok = await openTxConfirm("", {
+          sahara: true,
+          name: fullName || verified.pay_handle,
+          handle: verified.pay_handle,
+          photoUrl: verified.recipient_profile_photo_url || "",
+          detailText,
+        });
         if (!ok) {
-          setOut("Transfer cancelled.");
+          setOut({ message: "Transfer cancelled." });
           return;
         }
+        if (btn) btn.textContent = "Sending…";
         const params = new URLSearchParams({
           to_pay_handle: toPayHandle,
           amount_usd: String(amountUsd),
@@ -3022,17 +5517,162 @@
         if (data.wallet_summary) renderSummary(data.wallet_summary);
         setOut({ message: `Sent $${data.amount_usd} to ${data.to_pay_handle}.` });
         await loadActivity();
-      } catch (e) { setOut(e); }
+        resetPaySomeoneFormAfterSuccess();
+      } catch (e) {
+        setOut(e);
+      } finally {
+        transferSaharaInFlight = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = prevLabel || "Send money";
+        }
+      }
     }
 
-    function openTxConfirm(message) {
+    function openTxConfirm(message, options = null) {
       const backdrop = document.getElementById("tx_confirm_backdrop");
+      const titleEl = document.getElementById("tx_confirm_title");
       const text = document.getElementById("tx_confirm_text");
-      if (text) text.textContent = message || "Please confirm your transaction.";
+      const hero = document.getElementById("tx_confirm_recipient_hero");
+      const nameEl = document.getElementById("tx_confirm_recipient_name");
+      const handleEl = document.getElementById("tx_confirm_recipient_handle");
+      const img = document.getElementById("tx_confirm_avatar");
+      const ph = document.getElementById("tx_confirm_avatar_placeholder");
+      const sr = options && options.sahara;
+
+      if (titleEl) titleEl.textContent = sr ? "Confirm send on Sahara" : "Confirm Transaction";
+
+      if (sr) {
+        if (hero) {
+          hero.classList.add("tx-confirm-hero-visible");
+          hero.setAttribute("aria-hidden", "false");
+        }
+        if (nameEl) nameEl.textContent = options.name || "";
+        if (handleEl) handleEl.textContent = options.handle || "";
+        const photo = (options.photoUrl || "").trim();
+        if (photo && img) {
+          if (ph) ph.style.display = "none";
+          img.onerror = () => {
+            img.style.display = "none";
+            img.removeAttribute("src");
+            if (ph) {
+              const initial = (options.name || "?").trim().charAt(0).toUpperCase() || "?";
+              ph.textContent = initial;
+              ph.style.display = "flex";
+            }
+          };
+          img.onload = () => {
+            if (ph) ph.style.display = "none";
+          };
+          img.style.display = "block";
+          img.src = photo;
+        } else {
+          if (img) {
+            img.removeAttribute("src");
+            img.style.display = "none";
+          }
+          if (ph) {
+            const initial = (options.name || "?").trim().charAt(0).toUpperCase() || "?";
+            ph.textContent = initial;
+            ph.style.display = "flex";
+          }
+        }
+        if (text) text.textContent = options.detailText || message || "Please confirm.";
+      } else {
+        if (hero) {
+          hero.classList.remove("tx-confirm-hero-visible");
+          hero.setAttribute("aria-hidden", "true");
+        }
+        if (img) {
+          img.removeAttribute("src");
+          img.style.display = "none";
+        }
+        if (ph) ph.style.display = "none";
+        if (text) text.textContent = message || "Please confirm your transaction.";
+      }
+
       if (backdrop) backdrop.style.display = "flex";
       return new Promise((resolve) => {
         txConfirmResolver = resolve;
       });
+    }
+
+    function stashSendToParamsFromUrl() {
+      try {
+        const u = new URL(window.location.href);
+        const to = (u.searchParams.get("send_to") || u.searchParams.get("pay") || "").trim();
+        const amt = (u.searchParams.get("usd") || u.searchParams.get("amount") || "").trim();
+        if (to) sessionStorage.setItem("gw_pending_send_to", to);
+        if (amt) sessionStorage.setItem("gw_pending_send_usd", amt);
+        if (to || amt) {
+          u.searchParams.delete("send_to");
+          u.searchParams.delete("pay");
+          u.searchParams.delete("usd");
+          u.searchParams.delete("amount");
+          const q = u.searchParams.toString();
+          window.history.replaceState({}, "", u.pathname + (q ? `?${q}` : ""));
+        }
+      } catch (_) {}
+    }
+
+    function applyPendingSendToPrefill() {
+      try {
+        const to = sessionStorage.getItem("gw_pending_send_to");
+        const amt = sessionStorage.getItem("gw_pending_send_usd");
+        if (!to && !amt) return;
+        const h = document.getElementById("s2s_handle");
+        const a = document.getElementById("s2s_amount");
+        if (h && to) h.value = to;
+        if (a && amt) a.value = amt;
+        sessionStorage.removeItem("gw_pending_send_to");
+        sessionStorage.removeItem("gw_pending_send_usd");
+      } catch (_) {}
+    }
+
+    async function copyPaymentRequest() {
+      renderRequestMoneySelfPreview();
+      if (!token || !currentUserProfile || !isKycApproved(currentUserProfile)) {
+        showAlertModal("Sign in", "Log in with an approved account to copy a payment request.");
+        return;
+      }
+      let handle = currentUserProfile.pay_handle || "";
+      if (!handle) {
+        try {
+          const pub = await call("/me/public-id");
+          handle = pub.pay_handle || "";
+        } catch (_) {}
+      }
+      if (!handle) {
+        showAlertModal("Pay address", "Open My Profile to load your Sahara pay address, then try again.");
+        return;
+      }
+      const amt = Number(document.getElementById("pr_amount")?.value);
+      if (!(amt > 0)) {
+        showAlertModal("Amount", "Enter how many USD you are requesting.");
+        return;
+      }
+      const note = (document.getElementById("pr_note")?.value || "").trim();
+      const payout = Number(lastWalletSummary?.display_rate_usd_to_ghs ?? 0);
+      const ghsEst = payout > 0 ? (amt * payout).toFixed(2) : null;
+      const link = buildSaharaAppLinkWithParams({
+        send_to: handle,
+        usd: String(amt),
+      });
+      let body =
+        `Please send ${amt.toFixed(2)} USD to my Sahara address: ${handle}\n` +
+        (ghsEst ? `(Roughly GH₵ ${ghsEst} at Sahara’s estimated USD→cedis payout rate — they pay in USD on Sahara.)\n` : "") +
+        (note ? `Note: ${note}\n` : "") +
+        `Open this Sahara link to pre-fill the transfer: ${link}`;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(body);
+          setOut({ message: "Payment request copied — share with your payer." });
+        } else {
+          throw new Error("clipboard");
+        }
+      } catch (_) {
+        showAlertModal("Copy this request", body);
+      }
     }
 
     function resolveTxConfirm(confirmed) {
@@ -3089,41 +5729,146 @@
       return null;
     }
 
-    function scheduleFxPreview() {
-      if (fxPreviewTimer) clearTimeout(fxPreviewTimer);
-      fxPreviewTimer = setTimeout(() => loadFxPreview(), 280);
+    function useWalletOpsSheet() {
+      return (
+        isMobileTabLayout() &&
+        !!token &&
+        !!currentUserProfile &&
+        isKycApproved(currentUserProfile)
+      );
     }
 
-    async function loadFxPreview() {
+    function syncWalletOpsPlacement() {
+      const sections = document.getElementById("wallet_ops_sections");
+      const host = document.getElementById("wallet_ops_desktop_host");
+      const scroll = document.getElementById("wallet_ops_sheet_scroll");
+      const launcher = document.getElementById("wallet_ops_mobile_launcher");
+      if (!sections || !host || !scroll || !launcher) return;
+      if (useWalletOpsSheet()) {
+        launcher.style.display = "block";
+        host.style.display = "none";
+        if (sections.parentElement !== scroll) scroll.appendChild(sections);
+      } else {
+        launcher.style.display = "none";
+        host.style.display = "block";
+        if (sections.parentElement !== host) host.appendChild(sections);
+        closeWalletOpsSheet();
+      }
+    }
+
+    function openWalletOpsSheet() {
+      syncWalletOpsPlacement();
+      const bd = document.getElementById("wallet_ops_sheet_backdrop");
+      if (bd) bd.classList.add("wallet-ops-sheet-open");
+      renderRequestMoneySelfPreview();
+      refreshRecentSaharaRecipients();
+    }
+
+    function togglePeerPanel(bodyId, btnId) {
+      const body = document.getElementById(bodyId);
+      const btn = document.getElementById(btnId);
+      if (!body) return;
+      const isOpen = body.style.display !== "none";
+      body.style.display = isOpen ? "none" : "block";
+      if (btn && btn.setAttribute) btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+    }
+
+    function closeWalletOpsSheet(evt) {
+      if (evt && evt.target && evt.target.id !== "wallet_ops_sheet_backdrop") return;
+      const bd = document.getElementById("wallet_ops_sheet_backdrop");
+      if (bd) bd.classList.remove("wallet-ops-sheet-open");
+    }
+
+    function onFxTargetCurrencyChange() {
+      const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
+      const lab = document.getElementById("fx_local_label");
+      if (lab) lab.textContent = toCur === "NGN" ? "Naira (NGN)" : "Cedis (GHS)";
+      scheduleFxPreviewFromUsd();
+    }
+
+    function scheduleFxPreviewFromUsd() {
+      if (fxLocalTimer) clearTimeout(fxLocalTimer);
+      if (fxUsdTimer) clearTimeout(fxUsdTimer);
+      fxUsdTimer = setTimeout(() => loadFxPreviewFromUsd(), 280);
+    }
+
+    function scheduleFxPreviewFromLocal() {
+      if (fxUsdTimer) clearTimeout(fxUsdTimer);
+      if (fxLocalTimer) clearTimeout(fxLocalTimer);
+      fxLocalTimer = setTimeout(() => loadFxPreviewFromLocal(), 280);
+    }
+
+    function renderFxPreviewFromUsdData(data, toCur) {
       const wrap = document.getElementById("fx_preview_wrap");
       const main = document.getElementById("fx_preview_main");
       const sub = document.getElementById("fx_preview_sub");
-      const amt = Number(document.getElementById("quote_amount")?.value);
-      const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
       if (!wrap || !main || !sub) return;
+      const sym = data.you_receive_label || (toCur === "NGN" ? "₦" : "GH₵");
+      const recv = Number(data.you_receive ?? 0);
+      const fee = Number(data.fee_usd ?? 0);
+      const totalPay = Number(data.total_usd_pay ?? (Number(data.amount_usd ?? 0) + fee));
+      main.textContent = `You receive about ${sym} ${recv.toLocaleString()}. Fee: $${fee.toFixed(2)}.`;
+      sub.textContent = `Rate: 1 USD ≈ ${sym} ${Number(data.payout_rate || 0).toLocaleString()} · You pay total: $${totalPay.toFixed(2)}.`;
+      wrap.style.display = "block";
+    }
+
+    async function loadFxPreviewFromUsd() {
+      const wrap = document.getElementById("fx_preview_wrap");
+      const usdEl = document.getElementById("fx_usd_amount");
+      const locEl = document.getElementById("fx_local_amount");
+      const amt = Number(usdEl?.value);
+      const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
       if (!token || !(amt > 0)) {
-        wrap.style.display = "none";
+        if (wrap) wrap.style.display = "none";
+        if (!(amt > 0) && locEl) locEl.value = "";
         return;
       }
       try {
         const data = await call(`/fx/preview?amount_usd=${encodeURIComponent(amt)}&to_currency=${encodeURIComponent(toCur)}`);
-        const sym = data.you_receive_label || (toCur === "NGN" ? "₦" : "GH₵");
-        const recv = Number(data.you_receive ?? 0);
-        const fee = Number(data.fee_usd ?? 0);
-        main.textContent = `You receive about ${sym} ${recv.toLocaleString()} (after ${fee.toFixed(2)} USD fee).`;
-        sub.textContent = `Rate used: 1 USD ≈ ${sym} ${Number(data.payout_rate || 0).toLocaleString()} · Net USD converted: ${Number(data.net_usd_after_fee || 0).toFixed(2)}`;
-        wrap.style.display = "block";
+        if (locEl) locEl.value = String(Number(data.you_receive ?? 0).toFixed(2));
+        renderFxPreviewFromUsdData(data, toCur);
       } catch (_) {
-        wrap.style.display = "none";
+        if (wrap) wrap.style.display = "none";
+      }
+    }
+
+    async function loadFxPreviewFromLocal() {
+      const wrap = document.getElementById("fx_preview_wrap");
+      const usdEl = document.getElementById("fx_usd_amount");
+      const locEl = document.getElementById("fx_local_amount");
+      const lamt = Number(locEl?.value);
+      const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
+      if (!token || !(lamt > 0)) {
+        if (wrap) wrap.style.display = "none";
+        if (!(lamt > 0) && usdEl) usdEl.value = "";
+        return;
+      }
+      try {
+        const data = await call(
+          `/fx/preview-from-local?amount_local=${encodeURIComponent(lamt)}&currency=${encodeURIComponent(toCur)}`,
+        );
+        if (usdEl) usdEl.value = String(Number(data.you_pay_usd ?? 0).toFixed(2));
+        const sym = data.you_receive_label || (toCur === "NGN" ? "₦" : "GH₵");
+        const main = document.getElementById("fx_preview_main");
+        const sub = document.getElementById("fx_preview_sub");
+        if (main && sub && wrap) {
+          const fee = Number(data.fee_usd ?? 0);
+          const totalPay = Number(data.total_usd_pay ?? (Number(data.you_pay_usd ?? 0) + fee));
+          main.textContent = `To receive ${sym} ${Number(data.amount_local).toLocaleString()}, you pay $${totalPay.toFixed(2)} USD (fee $${fee.toFixed(2)}).`;
+          sub.textContent = `Rate: 1 USD ≈ ${sym} ${Number(data.payout_rate).toLocaleString()} · USD used for payout: $${Number(data.net_usd_after_fee).toFixed(2)}`;
+          wrap.style.display = "block";
+        }
+      } catch (_) {
+        if (wrap) wrap.style.display = "none";
       }
     }
 
     async function convertDirect() {
       try {
-        const amt = Number(document.getElementById("quote_amount")?.value);
+        const amt = Number(document.getElementById("fx_usd_amount")?.value);
         const toCur = (document.getElementById("fx_target_currency")?.value || "GHS").toUpperCase();
         if (!(amt > 0)) {
-          showAlertModal("Invalid amount", "Enter a USD amount greater than zero.");
+          showAlertModal("Invalid amount", "Enter a USD amount (or type cedis/naira and let USD fill in).");
           return;
         }
         const usdBal = getBalanceForCurrency("USD");
@@ -3141,7 +5886,7 @@
         if (data.wallet_summary) renderSummary(data.wallet_summary);
         await loadActivity();
         setOut({ message: data.message || "Conversion complete." });
-        scheduleFxPreview();
+        scheduleFxPreviewFromUsd();
       } catch (e) {
         const d = e && typeof e.detail === "string" ? e.detail : "";
         if (d.toLowerCase().includes("insufficient")) {
@@ -3154,22 +5899,44 @@
     async function loadProfile() {
       sessionBootstrapFailed = false;
       try {
+        const prevKycStatus = currentUserProfile?.kyc_status;
         const data = await call("/me");
         currentUserProfile = data;
         applyAuthView();
         applyPostKycMinimalView(data);
+        if (currentUserProfile.is_admin) {
+          loadAdminDashboard().catch(() => {});
+        }
         if (isKycApproved(currentUserProfile)) {
+          stopKycPendingPoll();
+          if (prevKycStatus && !isKycApproved({ kyc_status: prevKycStatus })) {
+            showAlertModal(
+              "You're verified",
+              "Your identity has been approved. You can use your full wallet, payments, and activity — you stay signed in; no need to log in again.",
+            );
+          }
           await loadSummary();
-          scheduleFxPreview();
+          onFxTargetCurrencyChange();
+          scheduleFxPreviewFromUsd();
           await loadPaymentMethods();
           await loadActivity();
-          await loadPaypalInvoices();
           startBalanceAutoRefresh();
+          startGreetingClock();
+          applyPendingSendToPrefill();
+          renderRequestMoneySelfPreview();
+          scheduleS2sRecipientLookup(true);
         } else {
           clearWalletSnapshotDisplay();
           stopBalanceAutoRefresh();
+          stopGreetingClock();
+          if (currentUserProfile?.kyc_status === "pending_review") {
+            startKycPendingPoll();
+          } else {
+            stopKycPendingPoll();
+          }
         }
       } catch (e) {
+        stopKycPendingPoll();
         setOut(e);
         const st = e && typeof e === "object" ? e.status : undefined;
         if (st === 401 || st === 403) {
@@ -3179,16 +5946,9 @@
         } else {
           currentUserProfile = null;
           sessionBootstrapFailed = true;
+          stopGreetingClock();
           applyAuthView();
         }
-      }
-    }
-
-    async function loadTransactions() {
-      try {
-        await call("/transactions");
-      } catch (e) {
-        setOut(e);
       }
     }
 
@@ -3199,26 +5959,76 @@
       } catch (e) { setOut(e); }
     }
 
+    function clearKycFormError() {
+      const el = document.getElementById("kyc_form_error");
+      if (el) {
+        el.style.display = "none";
+        el.textContent = "";
+      }
+    }
+
+    function showKycFormError(message) {
+      const el = document.getElementById("kyc_form_error");
+      if (!el) return;
+      el.textContent = message;
+      el.style.display = "block";
+    }
+
+    function validateKycBeforeSubmit() {
+      const missing = [];
+      const faceUrl = (document.getElementById("kyc_face_image_url")?.value || "").trim();
+      const docUrl = (document.getElementById("kyc_passport_image_url")?.value || "").trim();
+      const pn = (document.getElementById("kyc_passport_number")?.value || "").trim();
+      const pc = (document.getElementById("kyc_passport_country")?.value || "").trim();
+      const rc = (document.getElementById("kyc_residence_country")?.value || "").trim();
+      const city = (document.getElementById("kyc_city")?.value || "").trim();
+      if (!faceUrl) {
+        missing.push("Selfie — pick a photo, then tap “Upload selfie” and wait for the green confirmation.");
+      }
+      if (!docUrl) {
+        missing.push("ID document — pick a photo, then tap “Upload passport / ID photo” and wait for the green confirmation.");
+      }
+      if (!pn) missing.push("Passport / ID number");
+      if (!pc) missing.push("Document country");
+      if (!rc) missing.push("Residence country");
+      if (!city) missing.push("Current city");
+      return missing;
+    }
+
     async function submitKyc() {
+      clearKycFormError();
+      const missing = validateKycBeforeSubmit();
+      if (missing.length) {
+        const body = "Complete every required item before submitting:\n\n• " + missing.join("\n• ");
+        showKycFormError("Missing required items — see list in the dialog.");
+        showAlertModal("Cannot submit yet", body);
+        return;
+      }
       try {
         const faceUrl = (document.getElementById("kyc_face_image_url")?.value || "").trim();
-        if (!faceUrl) {
-          throw { detail: "Please upload a face verification selfie before submitting." };
-        }
         await call("/kyc/submit", "POST", {
-          passport_number: document.getElementById("kyc_passport_number").value,
-          passport_country: document.getElementById("kyc_passport_country").value,
-          residence_country: document.getElementById("kyc_residence_country").value,
-          current_city: document.getElementById("kyc_city").value,
-          passport_image_url: document.getElementById("kyc_passport_image_url").value,
+          passport_number: document.getElementById("kyc_passport_number").value.trim(),
+          passport_country: document.getElementById("kyc_passport_country").value.trim(),
+          residence_country: document.getElementById("kyc_residence_country").value.trim(),
+          current_city: document.getElementById("kyc_city").value.trim(),
+          passport_image_url: document.getElementById("kyc_passport_image_url").value.trim(),
           face_verification_image_url: faceUrl,
         });
         await loadProfile();
+        clearKycFormError();
         setOut({
           message:
             "Verification submitted. Our team will review your documents. You will have full wallet access after approval.",
         });
-      } catch (e) { setOut(e); }
+      } catch (e) {
+        let d = "";
+        if (e && typeof e.detail === "string") d = e.detail;
+        else if (e && Array.isArray(e.detail)) {
+          d = e.detail.map((x) => (x && (x.msg || x.message)) || "").filter(Boolean).join(" ");
+        }
+        if (d) showKycFormError(d);
+        setOut(e);
+      }
     }
 
     async function uploadWithForm(path, fileInputId) {
@@ -3242,26 +6052,41 @@
     }
 
     async function uploadPassportForKyc() {
+      const statusEl = document.getElementById("kyc_passport_status");
       try {
         const data = await uploadWithForm("/files/upload", "kyc_passport_file");
-        document.getElementById("kyc_passport_image_url").value = data.file_url;
-      } catch (e) { setOut(e); }
-    }
-
-    async function uploadFaceForKyc() {
-      try {
-        const data = await uploadWithForm("/files/upload", "kyc_face_file");
-        const el = document.getElementById("kyc_face_image_url");
-        if (el) el.value = data.file_url;
+        const hidden = document.getElementById("kyc_passport_image_url");
+        if (hidden) hidden.value = data.file_url || "";
+        if (statusEl) {
+          statusEl.textContent = "✓ ID document photo uploaded — you can submit when all fields are filled.";
+          statusEl.classList.add("kyc-upload-ok");
+        }
+        clearKycFormError();
       } catch (e) {
+        if (statusEl) {
+          statusEl.textContent = "";
+          statusEl.classList.remove("kyc-upload-ok");
+        }
         setOut(e);
       }
     }
 
-    async function loadMyKyc() {
+    async function uploadFaceForKyc() {
+      const statusEl = document.getElementById("kyc_face_status");
       try {
-        await call("/kyc/me");
+        const data = await uploadWithForm("/files/upload", "kyc_face_file");
+        const el = document.getElementById("kyc_face_image_url");
+        if (el) el.value = data.file_url || "";
+        if (statusEl) {
+          statusEl.textContent = "✓ Selfie uploaded — you can submit when all fields and ID photo are done.";
+          statusEl.classList.add("kyc-upload-ok");
+        }
+        clearKycFormError();
       } catch (e) {
+        if (statusEl) {
+          statusEl.textContent = "";
+          statusEl.classList.remove("kyc-upload-ok");
+        }
         setOut(e);
       }
     }
@@ -3417,19 +6242,242 @@
       } catch (e) {}
     }
 
-    function renderActivityRowsSimple(rows) {
-      return rows.map(
-        (r) => `
-        <div class="activity-item">
-          <div class="time">${new Date(r.timestamp).toLocaleString()}</div>
-          <div class="activity-summary">${escapeHtml(r.summary || "")}</div>
-        </div>
-      `,
-      ).join("");
+    function downloadActivityReceiptByIdx(i) {
+      const idx = Number(i);
+      if (!activityCache || !activityCache[idx]) return;
+      downloadTransactionReceipt(activityCache[idx]);
     }
 
-    function renderActivityRowDetail(r) {
-      const when = new Date(r.timestamp).toLocaleString();
+    function downloadTransactionReceipt(r) {
+      const JsPDF = window.jspdf && (window.jspdf.jsPDF || window.jspdf);
+      if (!JsPDF || !r) return;
+      const doc = new JsPDF({ unit: "pt", format: "a4" });
+      const margin = 48;
+      const pageW = doc.internal.pageSize.getWidth();
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      // If this receipt is for a PayPal subscription credit, include the linked subscription fee too.
+      const ref = typeof r.reference === "string" ? r.reference : "";
+      const isPaypalSubscriptionReceipt =
+        (r.entry_type === "PAYPAL_INVOICE_PAID" || r.entry_type === "CREDIT_INBOUND") &&
+        (ref.startsWith("PAYPAL_DEMO:") || ref.startsWith("PAYPAL_INVOICE:"));
+      const relatedPaypalFee =
+        isPaypalSubscriptionReceipt && r.entry_type !== "PAYPAL_COMMISSION"
+          ? (activityCache || []).find(
+              (x) => x && x.entry_type === "PAYPAL_COMMISSION" && typeof x.reference === "string" && x.reference === ref,
+            )
+          : null;
+
+      // If this receipt is for an FX conversion, include the related FX fee in the same PDF.
+      const relatedFxFee =
+        typeof ref === "string" && ref.startsWith("FX#") && r.entry_type !== "FX_FEE"
+          ? (activityCache || []).find(
+              (x) =>
+                x &&
+                x.reference === ref &&
+                String(x.entry_type || "").toUpperCase() === "FX_FEE" &&
+                x.amount != null,
+            )
+          : null;
+
+      function addParagraph(text, fontSize = 10, bold = false) {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(fontSize);
+        doc.setTextColor(28, 28, 28);
+        const lines = doc.splitTextToSize(String(text), maxW);
+        lines.forEach((line) => {
+          doc.text(line, margin, y);
+          y += fontSize + 4;
+        });
+      }
+
+      addParagraph("Sahara — Transaction receipt", 16, true);
+      y += 6;
+      addParagraph(`Date: ${formatDateOnly(r.timestamp)}`, 10);
+      const name = currentUserProfile?.full_name || "—";
+      const email = currentUserProfile?.email || "—";
+      addParagraph(`Account: ${name} (${email})`, 10);
+      y += 8;
+      addParagraph(String(r.summary || "Transaction"), 11, true);
+      y += 4;
+      if (r.entry_type) addParagraph(`Type: ${r.entry_type}`, 10);
+      if (r.type === "withdrawal") {
+        if (r.amount != null && r.currency) addParagraph(`Amount: ${r.amount} ${r.currency}`, 10);
+        if (r.destination_type) addParagraph(`Destination: ${r.destination_type}`, 10);
+        if (r.status) addParagraph(`Status: ${r.status}`, 10);
+      } else if (r.amount != null && r.currency) {
+        addParagraph(`Amount: ${r.amount} ${r.currency}`, 10);
+      }
+      if (r.reference) addParagraph(`Reference: ${String(r.reference).slice(0, 500)}`, 9);
+      if (relatedPaypalFee && relatedPaypalFee.amount != null && (relatedPaypalFee.currency || r.currency)) {
+        const cur = relatedPaypalFee.currency || r.currency || "USD";
+        addParagraph(
+          `Subscription fee (PayPal): ${Math.abs(Number(relatedPaypalFee.amount)).toFixed(2)} ${cur}`,
+          10,
+        );
+      }
+      if (relatedFxFee && relatedFxFee.amount != null) {
+        const cur = relatedFxFee.currency || r.currency || "USD";
+        addParagraph(
+          `FX fee (included): ${Math.abs(Number(relatedFxFee.amount)).toFixed(2)} ${cur}`,
+          10,
+        );
+      }
+      y += 12;
+      addParagraph(
+        "This receipt is generated from the Sahara demo app for your records. It is not a tax invoice unless issued by a licensed operator.",
+        8,
+      );
+      const safe = (email || "user").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 36) || "sahara";
+      doc.save(`sahara-receipt-${safe}-${Date.now()}.pdf`);
+    }
+
+    function activityIsFeeRow(r) {
+      if (!r) return false;
+      if (r.is_fee === true) return true;
+      const et = String(r.entry_type || "").toUpperCase();
+      return et === "FX_FEE" || et === "PAYPAL_COMMISSION";
+    }
+
+    function activityFeeChargeHtml(r) {
+      if (!activityIsFeeRow(r)) return "";
+      const amt = Math.abs(Number(r.amount));
+      const cur = r.currency || "USD";
+      const et = String(r.entry_type || "").toUpperCase();
+      const label = et === "PAYPAL_COMMISSION" ? "Subscription fee" : "Fee taken";
+      return `<div class="activity-charge-line" role="status">${label}: ${amt.toFixed(2)} ${cur}</div>`;
+    }
+
+    function renderActivityPreviewHome(rows) {
+      const root = document.getElementById("activity_preview_home");
+      if (!root) return;
+      const slice = (rows || []).slice(0, 3);
+      if (!slice.length) {
+        root.innerHTML = `<div class="home-activity-preview-empty">No recent transactions yet.</div>`;
+        return;
+      }
+      root.innerHTML = slice
+        .map((r) => {
+          const sum = escapeHtml((r.summary || "").trim() || "Transaction");
+          const feeCls = activityIsFeeRow(r) ? " home-activity-preview-line--fee" : "";
+          return `<div class="home-activity-preview-line${feeCls}"><span class="home-activity-preview-msg">${sum}</span></div>`;
+        })
+        .join("");
+    }
+
+    let topbarActivityOutsideHandler = null;
+
+    function syncTopbarActivityBellVisibility() {
+      const wrap = document.getElementById("topbar_activity_wrap");
+      const approved = !!(currentUserProfile && isKycApproved(currentUserProfile));
+      const show = !!(token && approved);
+      if (wrap) {
+        wrap.style.display = show ? "flex" : "none";
+        wrap.setAttribute("aria-hidden", show ? "false" : "true");
+      }
+      if (!show) closeTopbarActivityDropdown();
+    }
+
+    function renderTopbarActivityPreview(rows) {
+      const root = document.getElementById("topbar_activity_preview");
+      const badge = document.getElementById("topbar_activity_badge");
+      if (!root) return;
+      const slice = (rows || []).slice(0, 3);
+      if (!slice.length) {
+        root.innerHTML = `<div class="topbar-activity-line"><span class="topbar-activity-msg">No recent transactions yet.</span></div>`;
+      } else {
+        root.innerHTML = slice
+          .map((r) => {
+            const sum = escapeHtml((r.summary || "").trim() || "Transaction");
+            return `<div class="topbar-activity-line"><span class="topbar-activity-msg">${sum}</span></div>`;
+          })
+          .join("");
+      }
+      if (badge) {
+        const n = (rows || []).length;
+        if (n > 0) {
+          badge.style.display = "flex";
+          badge.textContent = n > 9 ? "9+" : String(n);
+          badge.removeAttribute("aria-hidden");
+        } else {
+          badge.style.display = "none";
+          badge.setAttribute("aria-hidden", "true");
+        }
+      }
+    }
+
+    function closeTopbarActivityDropdown() {
+      const dd = document.getElementById("topbar_activity_dropdown");
+      const bell = document.getElementById("topbar_activity_bell");
+      if (dd) {
+        dd.classList.remove("is-visible");
+        dd.setAttribute("aria-hidden", "true");
+      }
+      if (bell) bell.setAttribute("aria-expanded", "false");
+      if (topbarActivityOutsideHandler) {
+        document.removeEventListener("mousedown", topbarActivityOutsideHandler);
+        document.removeEventListener("touchstart", topbarActivityOutsideHandler);
+        topbarActivityOutsideHandler = null;
+      }
+      document.removeEventListener("keydown", topbarActivityEscape, true);
+    }
+
+    function topbarActivityEscape(e) {
+      if (e.key === "Escape") closeTopbarActivityDropdown();
+    }
+
+    function toggleTopbarActivityDropdown(evt) {
+      if (evt) evt.stopPropagation();
+      const dd = document.getElementById("topbar_activity_dropdown");
+      const bell = document.getElementById("topbar_activity_bell");
+      if (!dd || !bell) return;
+      if (dd.classList.contains("is-visible")) {
+        closeTopbarActivityDropdown();
+        return;
+      }
+      dd.classList.add("is-visible");
+      dd.setAttribute("aria-hidden", "false");
+      bell.setAttribute("aria-expanded", "true");
+      document.addEventListener("keydown", topbarActivityEscape, true);
+      setTimeout(() => {
+        topbarActivityOutsideHandler = function topbarActivityOutsideClick(e) {
+          if (e.target.closest && e.target.closest("#topbar_activity_wrap")) return;
+          closeTopbarActivityDropdown();
+        };
+        document.addEventListener("mousedown", topbarActivityOutsideHandler);
+        document.addEventListener("touchstart", topbarActivityOutsideHandler, { passive: true });
+      }, 0);
+    }
+
+    function openActivityFromTopbarBell() {
+      closeTopbarActivityDropdown();
+      setMobileTab("activity");
+      const el = document.getElementById("card_activity_full");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      loadActivity().catch(() => {});
+    }
+
+    function renderActivityRowsSimple(rows, baseIndex) {
+      const b = Number(baseIndex) || 0;
+      return rows
+        .map((r, j) => {
+          const idx = b + j;
+          const feeCls = activityIsFeeRow(r) ? " activity-item--fee" : "";
+          const showReceiptBtn = !activityIsFeeRow(r);
+          return `
+        <div class="activity-item activity-timeline-item${feeCls}">
+          <div class="activity-timeline-card-inner">
+            <div class="activity-summary">${escapeHtml(r.summary || "")}</div>
+            ${activityFeeChargeHtml(r)}
+            ${showReceiptBtn ? `<div class="activity-receipt-row"><button type="button" class="secondary" onclick="downloadActivityReceiptByIdx(${idx})">Receipt PDF</button></div>` : ``}
+          </div>
+        </div>`;
+        })
+        .join("");
+    }
+
+    function renderActivityRowDetail(r, idx) {
       const summary = escapeHtml(r.summary || "");
       let meta = "";
       if (r.type === "withdrawal") {
@@ -3441,6 +6489,9 @@
           r.status ? `Status: ${r.status}` : "",
         ].filter(Boolean);
         meta = parts.join(" · ");
+      } else if (activityIsFeeRow(r)) {
+        // The fee row already has a clear summary + amount line; avoid repeating “fee charged”.
+        meta = "";
       } else {
         const parts = [
           r.entry_type ? `Type: ${r.entry_type}` : "",
@@ -3450,63 +6501,69 @@
       }
       const refRaw = r.reference && String(r.reference).trim();
       const ref = refRaw ? escapeHtml(String(refRaw).slice(0, 500)) : "";
+      const i = Number(idx);
+      const feeCls = activityIsFeeRow(r) ? " activity-item--fee" : "";
+      const showReceiptBtn = !activityIsFeeRow(r);
       return `
-        <div class="activity-item activity-item-detail">
-          <div class="time">${when}</div>
-          <div class="activity-summary">${summary}</div>
-          <div class="activity-detail-meta">${escapeHtml(meta)}</div>
-          ${ref ? `<div class="activity-ref">Reference: ${ref}</div>` : ""}
+        <div class="activity-item activity-timeline-item activity-item-detail${feeCls}">
+          <div class="activity-timeline-card-inner">
+            <div class="activity-summary">${summary}</div>
+            ${activityFeeChargeHtml(r)}
+            ${meta ? `<div class="activity-detail-meta">${escapeHtml(meta)}</div>` : ""}
+            ${ref ? `<div class="activity-ref">Reference: ${ref}</div>` : ""}
+            ${showReceiptBtn ? `<div class="activity-receipt-row"><button type="button" class="secondary" onclick="downloadActivityReceiptByIdx(${i})">Receipt PDF</button></div>` : ``}
+          </div>
         </div>`;
     }
 
     function renderActivity(rows) {
       activityCache = rows || [];
-      const homeRoot = document.getElementById("activity_list_home");
       const fullRoot = document.getElementById("activity_list_full");
       const mobileNav = isMobileTabLayout() && canShowMobileBottomNav();
       const moreBtn = document.getElementById("activity_more_btn");
       const pdfBtn = document.getElementById("activity_pdf_btn");
-      const homeMore = document.getElementById("activity_home_more_btn");
-      const homePdf = document.getElementById("activity_home_pdf_btn");
 
-      const empty = `<div class="activity-item"><div class="activity-summary">No recent activity yet.</div></div>`;
+      const empty = `<div class="activity-item activity-item-empty"><div class="activity-summary">No recent activity yet.</div></div>`;
       if (!activityCache.length) {
-        if (homeRoot) homeRoot.innerHTML = empty;
-        if (fullRoot) fullRoot.innerHTML = empty;
+        if (fullRoot) {
+          fullRoot.innerHTML = empty;
+          fullRoot.classList.remove("activity-list--collapsed");
+          fullRoot.classList.add("activity-timeline-empty");
+        }
         if (moreBtn) moreBtn.style.display = "none";
         if (pdfBtn) pdfBtn.style.display = "none";
-        if (homeMore) homeMore.style.display = "none";
-        if (homePdf) homePdf.style.display = "none";
+        renderActivityPreviewHome([]);
+        renderTopbarActivityPreview([]);
         return;
       }
 
-      if (homeRoot) {
-        homeRoot.innerHTML = renderActivityRowsSimple(activityCache.slice(0, 3));
-      }
+      const hasOverflow = activityCache.length > ACTIVITY_LIST_COLLAPSED_COUNT;
+      const visibleRows =
+        activityExpanded || !hasOverflow ? activityCache : activityCache.slice(0, ACTIVITY_LIST_COLLAPSED_COUNT);
 
       if (fullRoot) {
+        fullRoot.classList.remove("activity-timeline-empty");
+        fullRoot.classList.toggle("activity-list--collapsed", !activityExpanded && hasOverflow);
         if (mobileNav) {
-          fullRoot.innerHTML = activityCache.map((r) => renderActivityRowDetail(r)).join("");
+          fullRoot.innerHTML = visibleRows.map((r, i) => renderActivityRowDetail(r, i)).join("");
         } else {
-          const visibleRows = activityExpanded ? activityCache : activityCache.slice(0, 3);
-          fullRoot.innerHTML = renderActivityRowsSimple(visibleRows);
+          fullRoot.innerHTML = renderActivityRowsSimple(visibleRows, 0);
         }
+      }
+
+      if (moreBtn) {
+        moreBtn.style.display = hasOverflow ? "inline-block" : "none";
+        moreBtn.textContent = activityExpanded ? "Show less" : "Show more";
       }
 
       if (mobileNav) {
-        if (homeMore) homeMore.style.display = activityCache.length > 3 ? "inline-block" : "none";
-        if (homePdf) homePdf.style.display = "inline-block";
-        if (moreBtn) moreBtn.style.display = "none";
         if (pdfBtn) pdfBtn.style.display = "none";
       } else {
-        if (moreBtn) {
-          moreBtn.style.display = activityCache.length > 3 ? "inline-block" : "none";
-          moreBtn.textContent = activityExpanded ? "Show less" : "Show more";
-        }
         if (pdfBtn) pdfBtn.style.display = "inline-block";
-        if (homeMore) homeMore.style.display = "none";
-        if (homePdf) homePdf.style.display = "none";
       }
+
+      renderActivityPreviewHome(activityCache);
+      renderTopbarActivityPreview(activityCache);
     }
 
     function escapeHtml(s) {
@@ -3561,7 +6618,7 @@
 
       addParagraph("Sahara — Activity statement", 16, true);
       y += 4;
-      addParagraph(`Generated: ${new Date().toLocaleString()}`, 9);
+      addParagraph(`Generated: ${formatDateOnly(new Date())}`, 9);
       y += 6;
       const name = currentUserProfile?.full_name || "-";
       const email = currentUserProfile?.email || "-";
@@ -3579,7 +6636,7 @@
       addParagraph("Activity (most recent first)", 11, true);
       y += 4;
       rows.forEach((r) => {
-        const when = r.timestamp ? new Date(r.timestamp).toLocaleString() : "-";
+        const when = formatDateOnly(r.timestamp);
         const line = `${when} — ${r.summary || ""}`;
         addParagraph(line, 9);
       });
@@ -3589,7 +6646,7 @@
       if (invoices && invoices.length) {
         invoices.forEach((inv) => {
           const st = inv.status || "pending";
-          const paid = inv.paid_at ? new Date(inv.paid_at).toLocaleString() : "—";
+          const paid = formatDateOnly(inv.paid_at);
           addParagraph(
             `Invoice ${inv.invoice_code || "-"} · $${inv.amount_usd ?? "-"} · ${st} · paid: ${paid}` +
               (inv.client_name ? ` · Client: ${inv.client_name}` : ""),
@@ -3614,18 +6671,23 @@
     async function loadActivity() {
       try {
         activityExpanded = false;
-        const homeRoot = document.getElementById("activity_list_home");
         const fullRoot = document.getElementById("activity_list_full");
+        const previewHome = document.getElementById("activity_preview_home");
         const sk = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
-        if (homeRoot) homeRoot.innerHTML = sk;
-        if (fullRoot) fullRoot.innerHTML = sk;
+        if (fullRoot) {
+          fullRoot.classList.remove("activity-timeline-empty");
+          fullRoot.innerHTML = sk;
+        }
+        if (previewHome) {
+          previewHome.innerHTML = `<div class="home-activity-preview-loading">Loading…</div>`;
+        }
         const data = await call("/me/activity");
         renderActivity(data);
+        await refreshRecentSaharaRecipients();
       } catch (e) {}
     }
 
     function toggleActivityView() {
-      if (isMobileTabLayout() && canShowMobileBottomNav()) return;
       activityExpanded = !activityExpanded;
       renderActivity(activityCache);
     }
@@ -3663,7 +6725,8 @@
 
     async function loadAdminActivity() {
       try {
-        await call("/admin/activity-feed");
+        const feed = await call("/admin/activity-feed");
+        renderAdminActivityFeed(feed);
       } catch (e) {
         setOut(e);
       }
@@ -3697,6 +6760,7 @@
 
     initTheme();
     initReferralFromUrl();
+    stashSendToParamsFromUrl();
     showSignInCard();
     onPaymentMethodTypeChange();
     restoreSession();

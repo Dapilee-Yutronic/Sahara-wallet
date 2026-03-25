@@ -25,13 +25,20 @@
     input, button { width:100%; padding:11px 12px; border-radius:12px; border:1px solid var(--border); background:#0e1729; color:var(--text); }
     button { background:var(--primary); border:none; font-weight:600; cursor:pointer; }
     .mutebtn { background:linear-gradient(135deg, #1b2a45, #213a63); border:1px solid #2e4468; }
-    .stats { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; }
     .metric { border:1px solid var(--border); border-radius:12px; padding:10px; background:#0e1729; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
     .label { font-size:12px; color:var(--muted); margin-bottom:4px; }
     .val { font-size:16px; font-weight:700; } .ok{color:var(--ok);} .warn{color:var(--warn);}
     pre { margin:0; background:#050a14; border:1px solid #1f2f4a; color:#c8dcff; padding:12px; border-radius:10px; max-height:300px; overflow:auto; font-size:12px; }
     canvas { width:100% !important; max-height:260px; }
     #map { height: 320px; border-radius: 10px; border:1px solid var(--border); }
+    .map-controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:8px 0 10px; }
+    .map-controls label { font-size:13px; color:var(--muted); }
+    .map-controls select { width:auto; min-width:220px; }
+    .users-pager { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; font-size:13px; color:var(--muted); }
+    .users-pager button { width:auto; padding:8px 12px; }
+    .pricing-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    @media (max-width: 720px) { .pricing-grid { grid-template-columns:1fr; } }
     table { width:100%; border-collapse: collapse; font-size: 13px; }
     th, td { border-bottom:1px solid var(--border); padding:8px; text-align:left; vertical-align: top; }
     th { color: var(--muted); font-weight: 600; }
@@ -103,13 +110,16 @@
       </div>
 
       <div class="card s12 admin-only" style="display:none;">
-        <h3>Live Stats</h3>
+        <div class="eyebrow">Revenue & volume</div>
+        <h3>Live stats</h3>
+        <p class="sub">Total transactions (all ledger rows), fee revenue (USD FX + PayPal commissions), and user/KYC totals.</p>
         <div class="stats">
+          <div class="metric"><div class="label">Total transactions</div><div id="m_tx" class="val">-</div></div>
+          <div class="metric"><div class="label">Fee revenue (USD)</div><div id="m_revenue" class="val ok">-</div></div>
           <div class="metric"><div class="label">Total Users</div><div id="m_users" class="val">-</div></div>
           <div class="metric"><div class="label">Pending KYC</div><div id="m_pending" class="val warn">-</div></div>
           <div class="metric"><div class="label">Approved KYC</div><div id="m_approved" class="val ok">-</div></div>
           <div class="metric"><div class="label">Total USD In</div><div id="m_usd" class="val">-</div></div>
-          <div class="metric"><div class="label">Transactions</div><div id="m_tx" class="val">-</div></div>
         </div>
       </div>
 
@@ -143,19 +153,46 @@
       </div>
 
       <div class="card s6 admin-only" style="display:none;">
-        <h3>Users by Country</h3>
+        <h3>Users by country</h3>
+        <p class="sub" style="margin-bottom:8px;">Toggle uses <strong>where they live</strong> (KYC residence) vs <strong>ID document country</strong>. One user = one dot from their latest KYC row.</p>
+        <div class="map-controls">
+          <label for="country_chart_mode">Chart shows</label>
+          <select id="country_chart_mode" onchange="onCountryModeChange()">
+            <option value="residence">Residence country</option>
+            <option value="document">Document (passport) country</option>
+          </select>
+        </div>
         <canvas id="country_chart"></canvas>
       </div>
 
       <div class="card s12 admin-only" style="display:none;">
-        <h3>Country Map (KYC Location)</h3>
+        <h3>Country map</h3>
+        <div class="map-controls">
+          <label for="map_mode">Map pins by</label>
+          <select id="map_mode" onchange="onMapModeChange()">
+            <option value="residence">Residence (where they live)</option>
+            <option value="document">Document country (on ID)</option>
+          </select>
+        </div>
         <div id="map"></div>
       </div>
 
       <div class="card s12 admin-only" style="display:none;">
         <div class="eyebrow">Operations</div>
-        <h3>Users & Credentials View (Secure)</h3>
-        <p class="sub">Passwords are never shown in plain text. This view includes user identity, KYC, and uploaded profile photos.</p>
+        <h3>Users &amp; credentials (secure)</h3>
+        <p class="sub">Passwords are never shown in plain text — only secure hashes exist server-side. Paginated for large directories (up to 2000 per request).</p>
+        <div class="users-pager">
+          <label>Sort
+            <select id="users_sort" onchange="usersSort = this.value; usersPageOffset = 0; loadUsersPage();">
+              <option value="created_desc">Newest signup</option>
+              <option value="email_asc">Email A–Z</option>
+              <option value="name_asc">Name A–Z</option>
+            </select>
+          </label>
+          <span id="users_page_info"></span>
+          <button type="button" class="mutebtn" onclick="usersPageOffset = Math.max(0, usersPageOffset - usersPageSize); loadUsersPage();">Previous</button>
+          <button type="button" class="mutebtn" onclick="usersPageOffset += usersPageSize; loadUsersPage();">Next</button>
+        </div>
         <div style="overflow:auto;">
           <table>
             <thead>
@@ -196,9 +233,46 @@
         </div>
       </div>
 
-      <div class="card s12">
-        <h3>KYC Management (Lifecycle)</h3>
-        <p class="sub">Manage users after submission. You can approve, reject, or revoke later if needed.</p>
+      <div class="card s12 admin-only" style="display:none;">
+        <div class="eyebrow">Pricing</div>
+        <h3>Conversion rates &amp; commissions</h3>
+        <p class="sub">Payout rates = what users see for USD→GHS/NGN. Mid-market is for internal spread math. FX fee and PayPal % apply to new conversions and demo PayPal flows.</p>
+        <div class="pricing-grid">
+          <div>
+            <div class="label">Payout USD→GHS</div>
+            <input id="ps_payout_ghs" type="number" step="0.01" min="0" />
+          </div>
+          <div>
+            <div class="label">Payout USD→NGN</div>
+            <input id="ps_payout_ngn" type="number" step="0.01" min="0" />
+          </div>
+          <div>
+            <div class="label">Mid-market USD→GHS</div>
+            <input id="ps_mid_ghs" type="number" step="0.01" min="0" />
+          </div>
+          <div>
+            <div class="label">Mid-market USD→NGN</div>
+            <input id="ps_mid_ngn" type="number" step="0.01" min="0" />
+          </div>
+          <div>
+            <div class="label">FX fee (0.015 = 1.5%)</div>
+            <input id="ps_fx_fee" type="number" step="0.0001" min="0" max="0.5" />
+          </div>
+          <div>
+            <div class="label">PayPal commission (0.05 = 5%)</div>
+            <input id="ps_pp_pct" type="number" step="0.0001" min="0" max="0.5" />
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" onclick="loadPlatformSettings()">Reload</button>
+          <button type="button" class="mutebtn" onclick="savePlatformSettings()">Save settings</button>
+        </div>
+        <p class="sub" id="ps_saved_note" style="margin-top:8px;"></p>
+      </div>
+
+      <div class="card s12 admin-only" style="display:none;">
+        <h3>KYC management (lifecycle)</h3>
+        <p class="sub">Pending: approve or reject. Already approved: only <strong>Revoke access</strong> (no repeat approve). Rejected: read-only here — use queue to resubmit flows if you add them later.</p>
         <div>
           <button type="button" class="mutebtn" onclick="loadKycManagement('submitted')">Pending</button>
           <button type="button" class="mutebtn" onclick="loadKycManagement('approved')">Approved</button>
@@ -240,6 +314,12 @@
     let knownSubmissionIds = [];
     let notificationTimer = null;
     let isAdminAuthenticated = false;
+    let lastAnalytics = null;
+    const usersPageSize = 100;
+    let usersPageOffset = 0;
+    let usersSort = "created_desc";
+    let usersTotalCount = 0;
+    let fxFeeCalcSource = "ghs";
     const out = (v) => document.getElementById("out").textContent = JSON.stringify(v, null, 2);
     function setAdminView(authenticated) {
       isAdminAuthenticated = authenticated;
@@ -247,6 +327,45 @@
         el.style.display = authenticated ? "" : "none";
       });
     }
+
+    function computeFxFeePercentAuto() {
+      try {
+        const payoutGhsEl = document.getElementById("ps_payout_ghs");
+        const midGhsEl = document.getElementById("ps_mid_ghs");
+        const payoutNgnEl = document.getElementById("ps_payout_ngn");
+        const midNgnEl = document.getElementById("ps_mid_ngn");
+        const fxFeeEl = document.getElementById("ps_fx_fee");
+        if (!payoutGhsEl || !midGhsEl || !payoutNgnEl || !midNgnEl || !fxFeeEl) return;
+
+        const payout = fxFeeCalcSource === "ngn" ? parseFloat(payoutNgnEl.value) : parseFloat(payoutGhsEl.value);
+        const mid = fxFeeCalcSource === "ngn" ? parseFloat(midNgnEl.value) : parseFloat(midGhsEl.value);
+        if (!Number.isFinite(payout) || !Number.isFinite(mid) || !(mid > 0)) return;
+
+        // Convert mid-market spread into an FX fee percent on USD:
+        // If payout is lower than mid-market, fee% = (mid - payout) / mid.
+        let fee = (mid - payout) / mid;
+        if (!Number.isFinite(fee)) return;
+        fee = Math.max(0, Math.min(0.5, fee)); // clamp to a reasonable range
+        fxFeeEl.value = fee.toFixed(4);
+      } catch (_) {}
+    }
+
+    function attachFxFeeAutoCalcListeners() {
+      const bind = (id, source) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", () => {
+          fxFeeCalcSource = source;
+          computeFxFeePercentAuto();
+        });
+      };
+      bind("ps_payout_ghs", "ghs");
+      bind("ps_mid_ghs", "ghs");
+      bind("ps_payout_ngn", "ngn");
+      bind("ps_mid_ngn", "ngn");
+    }
+
+    attachFxFeeAutoCalcListeners();
     function setAdminToken(nextToken) {
       token = nextToken || "";
       if (token) localStorage.setItem("gw_admin_token", token);
@@ -262,6 +381,7 @@
         requestBrowserNotificationPermission();
         loadSeenSubmissionIds();
         await loadDashboard();
+        await loadPlatformSettings();
         startNotificationPolling();
       } catch (_) {
         setAdminToken("");
@@ -328,6 +448,7 @@
         requestBrowserNotificationPermission();
         loadSeenSubmissionIds();
         await loadDashboard();
+        await loadPlatformSettings();
         startNotificationPolling();
       } catch (e) {
         out(e);
@@ -355,6 +476,108 @@
       document.getElementById("m_approved").textContent = s.approved_kyc ?? "-";
       document.getElementById("m_usd").textContent = s.total_usd_in ?? "-";
       document.getElementById("m_tx").textContent = s.total_transactions ?? "-";
+      const rev = document.getElementById("m_revenue");
+      if (rev) {
+        const v = s.fee_revenue_usd;
+        rev.textContent = v != null && v !== "" ? `$${Number(v).toFixed(2)}` : "-";
+      }
+    }
+
+    function onMapModeChange() {
+      if (!lastAnalytics) return;
+      const sel = document.getElementById("map_mode");
+      const mode = sel && sel.value === "document" ? "document" : "residence";
+      const pts =
+        mode === "document"
+          ? lastAnalytics.map_points_document
+          : lastAnalytics.map_points_residence || lastAnalytics.map_points;
+      renderMap(pts || []);
+    }
+
+    function onCountryModeChange() {
+      if (!lastAnalytics || typeof Chart === "undefined") return;
+      const sel = document.getElementById("country_chart_mode");
+      const mode = sel && sel.value === "document" ? "document" : "residence";
+      const rows =
+        mode === "document"
+          ? lastAnalytics.users_by_document_country
+          : lastAnalytics.users_by_residence_country || lastAnalytics.users_by_country;
+      const list = rows || [];
+      countryChart = drawBarChart(
+        "country_chart",
+        countryChart,
+        list.map((x) => x.country),
+        list.map((x) => x.count),
+        mode === "document" ? "Users by ID country" : "Users by residence",
+        "#14b8a6",
+      );
+    }
+
+    async function loadUsersPage() {
+      if (!token) return;
+      try {
+        const data = await req(
+          `/admin/users?limit=${usersPageSize}&offset=${usersPageOffset}&sort=${encodeURIComponent(usersSort)}`,
+        );
+        if (Array.isArray(data)) {
+          renderUsersTable(data);
+          usersTotalCount = data.length;
+          const el = document.getElementById("users_page_info");
+          if (el) el.textContent = `${data.length} users`;
+          return;
+        }
+        usersTotalCount = data.total || 0;
+        renderUsersTable(data.users || []);
+        const el = document.getElementById("users_page_info");
+        if (el) {
+          if (!usersTotalCount) el.textContent = "0 users";
+          else {
+            const start = (data.offset || 0) + 1;
+            const end = (data.offset || 0) + (data.users || []).length;
+            el.textContent = `${start}–${end} of ${usersTotalCount}`;
+          }
+        }
+      } catch (e) {
+        out(e);
+      }
+    }
+
+    async function loadPlatformSettings() {
+      try {
+        const s = await req("/admin/platform-settings");
+        document.getElementById("ps_payout_ghs").value = s.payout_usd_ghs;
+        document.getElementById("ps_payout_ngn").value = s.payout_usd_ngn;
+        document.getElementById("ps_mid_ghs").value = s.mid_market_usd_ghs;
+        document.getElementById("ps_mid_ngn").value = s.mid_market_usd_ngn;
+        document.getElementById("ps_fx_fee").value = s.fx_fee_percent;
+        document.getElementById("ps_pp_pct").value = s.paypal_commission_percent;
+        const note = document.getElementById("ps_saved_note");
+        if (note) note.textContent = s.updated_at ? `Server values loaded (last update: ${s.updated_at})` : "";
+        computeFxFeePercentAuto();
+      } catch (e) {
+        out(e);
+      }
+    }
+
+    async function savePlatformSettings() {
+      try {
+        // Always recalculate FX fee from the current spread inputs.
+        computeFxFeePercentAuto();
+        const body = {
+          payout_usd_ghs: parseFloat(document.getElementById("ps_payout_ghs").value),
+          payout_usd_ngn: parseFloat(document.getElementById("ps_payout_ngn").value),
+          mid_market_usd_ghs: parseFloat(document.getElementById("ps_mid_ghs").value),
+          mid_market_usd_ngn: parseFloat(document.getElementById("ps_mid_ngn").value),
+          fx_fee_percent: parseFloat(document.getElementById("ps_fx_fee").value),
+          paypal_commission_percent: parseFloat(document.getElementById("ps_pp_pct").value),
+        };
+        await req("/admin/platform-settings", "PATCH", body);
+        showToast("<b>Saved</b><br>Conversion rates and PayPal commission apply to new activity.");
+        await loadPlatformSettings();
+      } catch (e) {
+        out(e);
+        showToast(`<b>Save failed</b><br>${formatReqError(e)}`);
+      }
     }
 
     function drawLineChart(canvasId, chartRef, labels, data, label, color) {
@@ -551,17 +774,26 @@
       }
       items.forEach((k) => {
         const tr = document.createElement("tr");
+        const st = String(k.status || "").toLowerCase();
+        let actions = "";
+        if (st === "approved") {
+          actions = `<button type="button" class="mutebtn" onclick="revokeKyc(${k.user_id})">Revoke access</button>`;
+        } else if (st === "submitted") {
+          actions = `<button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>`;
+        } else if (st === "rejected") {
+          actions = `<span style="color:var(--muted);">No action</span>`;
+        } else {
+          actions = `<button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
+            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>`;
+        }
         tr.innerHTML = `
           <td>${k.full_name || "Unknown"} (ID: ${k.user_id})</td>
           <td>${k.status || "-"}</td>
           <td>${k.passport_number || "-"} / ${k.passport_country || "-"}</td>
           <td>${k.current_city || "-"}, ${k.residence_country || "-"}</td>
           <td>${k.reviewer_notes || "-"}</td>
-          <td>
-            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'approved')">Approve</button>
-            <button type="button" class="mutebtn" onclick="quickReviewKyc(${k.id}, 'rejected')">Reject</button>
-            <button type="button" class="mutebtn" onclick="revokeKyc(${k.user_id})">Revoke</button>
-          </td>
+          <td>${actions}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -569,7 +801,11 @@
 
     async function loadKycManagement(filterStatus = "submitted") {
       try {
-        const [rows, users] = await Promise.all([req("/admin/kyc-submissions"), req("/admin/users")]);
+        const [rows, uresp] = await Promise.all([
+          req("/admin/kyc-submissions"),
+          req("/admin/users?limit=2000&offset=0"),
+        ]);
+        const users = Array.isArray(uresp) ? uresp : (uresp.users || []);
         const nameByUserId = {};
         (users || []).forEach((u) => { nameByUserId[u.id] = u.full_name; });
         const list = (rows || []).map((r) => ({ ...r, full_name: nameByUserId[r.user_id] || "Unknown" }));
@@ -600,7 +836,8 @@
         const rows = await req("/admin/kyc-submissions");
         let users = [];
         try {
-          users = await req("/admin/users");
+          const ur = await req("/admin/users?limit=2000&offset=0");
+          users = Array.isArray(ur) ? ur : (ur.users || []);
         } catch {
           users = [];
         }
@@ -658,13 +895,10 @@
         if (usersTable) {
           usersTable.innerHTML = `<tr><td colspan="8"><div class="skeleton"></div></td></tr>`;
         }
-        const [stats, analytics, users] = await Promise.all([
-          req("/admin/stats"),
-          req("/admin/analytics"),
-          req("/admin/users")
-        ]);
+        const [stats, analytics] = await Promise.all([req("/admin/stats"), req("/admin/analytics")]);
         renderAdminStats(stats);
-        renderUsersTable(users);
+        lastAnalytics = analytics;
+        await loadUsersPage();
 
         signinsChart = drawLineChart(
           "signins_chart",
@@ -690,17 +924,13 @@
           "New users per day",
           "#a78bfa"
         );
-        countryChart = drawBarChart(
-          "country_chart",
-          countryChart,
-          analytics.users_by_country.map((x) => x.country),
-          analytics.users_by_country.map((x) => x.count),
-          "Users by country",
-          "#14b8a6"
-        );
-        renderMap(analytics.map_points);
+        onCountryModeChange();
+        onMapModeChange();
         await loadKycManagement("submitted");
-        out({ stats, analytics_preview: analytics.users_by_country.slice(0, 5), users_preview: users.slice(0, 3) });
+        out({
+          stats,
+          analytics_preview: (analytics.users_by_residence_country || analytics.users_by_country || []).slice(0, 5),
+        });
       } catch (e) { out(e); }
     }
     async function reviewKyc(status) {

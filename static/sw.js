@@ -1,4 +1,4 @@
-const CACHE_NAME = "sahara-pwa-v4";
+const CACHE_NAME = "sahara-pwa-v13";
 
 const APP_SHELL = [
   "/",
