@@ -4810,12 +4810,24 @@
         if (approved && profile && profile.profile_photo_url) {
           avatar.src = profile.profile_photo_url;
           // If the stored avatar URL points to a missing file (e.g., after redeploys),
-          // hide the avatar UI instead of showing the browser broken-image icon.
+          // replace it with a lightweight placeholder instead of hiding it.
           avatar.onerror = () => {
-            avatarWrap.style.display = "none";
-            try {
-              avatar.removeAttribute("src");
-            } catch (_) {}
+            // Generic placeholder (inline SVG) so we avoid a broken-image icon.
+            // Using utf8 + encodeURIComponent for compatibility.
+            const svg = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+                <defs>
+                  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#8b5cf6"/>
+                    <stop offset="1" stop-color="#3b82f6"/>
+                  </linearGradient>
+                </defs>
+                <rect width="96" height="96" rx="48" fill="url(#g)"/>
+                <circle cx="48" cy="40" r="14" fill="rgba(255,255,255,0.92)"/>
+                <path d="M18 92c5-22 21-34 30-34s25 12 30 34" fill="rgba(255,255,255,0.92)"/>
+              </svg>
+            `.trim();
+            avatar.src = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
           };
           avatar.removeAttribute("aria-hidden");
           avatarWrap.style.display = "inline-flex";
