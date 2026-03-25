@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import shutil
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -55,7 +56,22 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
-os.makedirs("static/uploads", exist_ok=True)
+
+# Persist uploads in container deployments (Railway mounts /data), but keep local dev working.
+UPLOAD_DIR = "/data/uploads" if os.path.isdir("/data") else "static/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# One-time migration: if legacy files exist in static/uploads in this container,
+# copy them into the persisted uploads directory.
+try:
+    if UPLOAD_DIR != "static/uploads" and os.path.isdir("static/uploads"):
+        for fn in os.listdir("static/uploads"):
+            src = os.path.join("static/uploads", fn)
+            dst = os.path.join(UPLOAD_DIR, fn)
+            if os.path.isfile(src) and not os.path.exists(dst):
+                shutil.copy2(src, dst)
+except Exception:
+    pass
 
 
 def _sqlite_add_kyc_face_column() -> None:
@@ -81,7 +97,7 @@ if engine.dialect.name == "sqlite":
     _sqlite_add_kyc_face_column()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/uploads", StaticFiles(directory="static/uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Simple pricing constants for MVP.
 MID_MARKET_USD_GHS = 14.40
@@ -93,7 +109,6 @@ PAYPAL_DEMO_COMMISSION_PERCENT = 0.05
 PUBLIC_ID_PREFIX = "SAHARA"
 DEFAULT_ADMIN_EMAIL = "admin@globalwallet.app"
 DEFAULT_ADMIN_PASSWORD = "Admin123!"
-UPLOAD_DIR = "static/uploads"
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
